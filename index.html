@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./styles.css" rel="stylesheet">
+    <!-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> -->
+    <title>File Sharing App</title>
+</head>
+<!-- Make design like a SAAS -->
+
+
+<body class="bg-gray-200 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded shadow-md max-w-md w-full">
+        <h1 class="text-2xl font-bold mb-4">File Sharing App</h1>
+        <!-- file component start -->
+        <div class="flex items-center justify-center w-full">
+            <label for="fileInput"
+                class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg class="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
+                    </svg>
+                    <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to
+                            upload</span>
+                        or drag and drop</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                </div>
+                <input id="fileInput" type="file" class="hidden" />
+            </label>
+        </div>
+
+        <!-- file component end -->
+        <!-- <input type="file" id="fileInput" class="mb-4 border p-2"> -->
+        <div id="progressBar" class="mt-4 hidden">
+            <div id="progressBarInner" class="bg-blue-500 h-4 rounded"></div>
+        </div>
+        <div id="shareLink" class="mt-4 hidden">
+            <p class="font-bold">Share this link:</p>
+            <input type="text" id="linkInput" class="border p-2 w-full" readonly>
+        </div>
+        <button id="downloadBtn" class="mt-4 hidden bg-green-500 text-white px-4 py-2 rounded">Download File</button>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
