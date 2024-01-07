@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fileData = e.target.files[0];
     fileChunks = splitFileIntoChunks(fileData);
     shareLink.classList.remove("hidden");
-    linkInput.value = `${window.location.origin}?peer=${peer.id}`;
+    linkInput.value = `${window.location.origin + window.location.pathname}?peer=${peer.id}`;
   }
 
   function splitFileIntoChunks(file) {
