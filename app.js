@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let fileChunks = [];
   let currentChunk = 0;
   let otherPeer;
+  const CHUNK_SIZE = 16 * 1024; // Size of each file chunk
+  const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
 
   const fileInput = document.getElementById("fileInput");
   const progressBar = document.getElementById("progressBar");
@@ -50,11 +52,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const fileReader = new FileReader();
     fileReader.readAsArrayBuffer(file);
     fileReader.onloadend = () => {
-      const chunkSize = 16 * 1024; // improve this
       const fileSize = file.size;
-      const numberOfChunks = Math.ceil(fileSize / chunkSize);
+      const numberOfChunks = Math.ceil(fileSize / CHUNK_SIZE);
+      /* The code is splitting the file into chunks of a specified size (`CHUNK_SIZE`). It iterate over the file and slice it into chunks. Each chunk is then pushed into the `fileChunks` array. The loop continues until all chunks have been created. */
       for (let i = 0; i < numberOfChunks; i++) {
-        fileChunks.push(fileReader.result.slice(i * chunkSize, (i + 1) * chunkSize));
+        fileChunks.push(fileReader.result.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE));
       }
     };
     return fileChunks;
@@ -63,13 +65,19 @@ document.addEventListener("DOMContentLoaded", () => {
   function handlePeerConnection(conn) {
     otherPeer = conn;
     otherPeer.on("open", () => {
-      otherPeer.send(`bbb.${fileData.name}`);
+      otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
       otherPeer.send(fileChunks.length.toString());
       // downloadBtn.classList.remove("hidden");
       progressBar.classList.remove("hidden");
       progressBarInner.style.width = "0%";
     });
     otherPeer.on("data", handleDataReceived);
+    otherPeer.on("close", () => {
+      // Reset currentChunk on unsuccessful download
+      currentChunk = 0;
+      progressBarInner.style.width = "0%";
+      progressBar.classList.add("hidden");
+    });
   }
 
   function handleDataReceived(data) {
@@ -86,12 +94,16 @@ document.addEventListener("DOMContentLoaded", () => {
           otherPeer.send("done");
           // Reset currentChunk on successful download
           currentChunk = 0;
+          progressBarInner.style.width = "0%";
+          progressBar.classList.add("hidden");
         }
       }
     } catch (error) {
       console.error("An error occurred during the file transfer: ", error);
       // Reset currentChunk on unsuccessful download
       currentChunk = 0;
+      progressBarInner.style.width = "0%";
+      progressBar.classList.add("hidden");
     }
   }
 
@@ -116,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let receivedSize = 0;
       let downloadInitiated = false;
       otherPeer.on("data", (data) => {
-        if (typeof data === "string" && data.startsWith("bbb.")) {
+        if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
           // This if block checks if the data is a string and if it is starts with "bbb.". If it starts with "bbb.", then it is the name of the file. The name of the file is extracted from the data and stored in the `filename` variable.
           filename = data.slice(4);
         } else if (typeof data === "string" && data !== "done") {
@@ -144,6 +156,8 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer.on("close", () => {
         // Reset currentChunk on unsuccessful download
         currentChunk = 0;
+        progressBarInner.style.width = "0%";
+        progressBar.classList.add("hidden");
       });
     }
   }
