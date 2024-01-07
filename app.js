@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentChunk < fileChunks.length) {
       otherPeer.send({ index: currentChunk, data: fileChunks[currentChunk] });
       currentChunk++;
-      updateProgressBar();
+      progressBarInner.style.width = `${(currentChunk / fileChunks.length) * 100}%`;
       if (currentChunk < fileChunks.length) {
         otherPeer.send("next");
       }
@@ -116,10 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
     currentChunk = 0;
     progressBarInner.style.width = "0%";
     progressBar.classList.add("hidden");
-  }
-
-  function updateProgressBar() {
-    progressBarInner.style.width = `${(currentChunk / fileChunks.length) * 100}%`;
   }
 
   function handlePeerOpen(id) {
@@ -170,13 +166,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-
-// function initiateDownload() {
-//   const file = new Blob(receivedChunks.map((chunk) => new Blob([chunk])));
-//   const url = URL.createObjectURL(file);
-//   const a = document.createElement("a");
-//   a.href = url;
-//   a.download = filename;
-//   a.click();
-//   downloadInitiated = true;
-// }
