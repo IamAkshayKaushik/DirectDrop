@@ -31,7 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
         "iceServers": [
           { "urls": "stun:stun.l.google.com:19302" },
           { "urls": "stun:freestun.net:3479" },
-          { "urls": "stun:freestun.net:3479" },
           { "urls": "stun:freestun.net:5350" },
           { "urls": "turn:freestun.net:3479", "username": "free", "credential": "free" },
           { "urls": "turn:freestun.net:5350", "username": "free", "credential": "free" },
@@ -85,10 +84,14 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else {
           otherPeer.send("done");
+          // Reset currentChunk on successful download
+          currentChunk = 0;
         }
       }
     } catch (error) {
       console.error("An error occurred during the file transfer: ", error);
+      // Reset currentChunk on unsuccessful download
+      currentChunk = 0;
     }
   }
 
@@ -136,6 +139,11 @@ document.addEventListener("DOMContentLoaded", () => {
           a.click();
           downloadInitiated = true;
         }
+      });
+
+      otherPeer.on("close", () => {
+        // Reset currentChunk on unsuccessful download
+        currentChunk = 0;
       });
     }
   }
