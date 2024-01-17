@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentChunk = 0;
   let receivedChunks = [];
   let otherPeer;
-  const CHUNK_SIZE = 16 * 1024; // Size of each file chunk
+  const CHUNK_SIZE = 16 * 1024; // Size of each file chunk in bytes
   const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
   let downloadInitiated = false;
 
@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
       receivedSize = 0;
       downloadInitiated = false;
       let totalChunks = 0;
-
+      let filename = Date.now().toString();
       otherPeer.on("data", (data) => {
         if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
           filename = data.slice(4);
