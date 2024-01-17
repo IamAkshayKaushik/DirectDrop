@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fileData = e.target.files[0];
     fileChunks = splitFileIntoChunks(fileData);
     shareLink.classList.remove("hidden");
-    linkInput.value = `${window.location.origin + window.location.pathname}?peer=${peer.id}`;
+    linkInput.value = `${window.location.href}?peer=${peer.id}`;
   }
 
   function splitFileIntoChunks(file) {
@@ -116,6 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
     currentChunk = 0;
     progressBarInner.style.width = "0%";
     progressBar.classList.add("hidden");
+    //reload the page removing parameters
+    window.location.href = window.location.href.split("?")[0];
   }
 
   function handlePeerOpen(id) {
