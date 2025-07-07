@@ -31,10 +31,6 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
                 </div>
                 <input id="fileInput" type="file" class="hidden" />
-                <div id="qrContainer" class="hidden">
-                    <div id="qrcode"></div>
-                </div>
-
             </label>
         </div>
 
@@ -46,6 +42,9 @@
         <div id="shareLink" class="mt-4 hidden">
             <p class="font-bold">Share this link:</p>
             <input type="text" id="linkInput" class="border p-2 w-full" readonly>
+        </div>
+        <div id="qrContainer" class="hidden">
+            <div id="qrcode"></div>
         </div>
         <button id="downloadBtn" class="mt-4 hidden bg-green-500 text-white px-4 py-2 rounded">Download File</button>
     </div>
