@@ -43,12 +43,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function handleFileSelection(e) {
-    fileData = e.target.files[0];
-    fileChunks = splitFileIntoChunks(fileData);
-    shareLink.classList.remove("hidden");
-    linkInput.value = `${window.location.href}?peer=${peer.id}`;
-  }
+function handleFileSelection(e) {
+  fileData = e.target.files[0];
+  fileChunks = splitFileIntoChunks(fileData);
+  shareLink.classList.remove("hidden");
+
+  const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
+  linkInput.value = link;
+
+  // Show & generate QR code
+  const qrContainer = document.getElementById("qrContainer");
+  qrContainer.classList.remove("hidden");
+  // Clear any existing code
+  document.getElementById("qrcode").innerHTML = "";
+  // Generate new QR
+  new QRCode(document.getElementById("qrcode"), {
+    text: link,
+    width: 200,
+    height: 200,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+  });
+}
+
 
   function splitFileIntoChunks(file) {
     const fileReader = new FileReader();
