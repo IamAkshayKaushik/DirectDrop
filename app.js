@@ -90,8 +90,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentFileIndex < fileQueue.length) {
       fileData = fileQueue[currentFileIndex];
       currentChunk = 0;
+      renderFileQueue();
       return true;
     }
+    renderFileQueue();
     return false;
   }
 
@@ -106,11 +108,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (prepareNextFile()) {
           sendFileMetadata();
         }
+      } else {
+        renderFileQueue();
       }
     } else {
-      fileQueue = newFiles;
-      currentFileIndex = 0;
-      prepareNextFile();
+      fileQueue.push(...newFiles);
+      if (currentFileIndex === 0 && fileQueue.length === newFiles.length) {
+        prepareNextFile();
+      } else {
+        renderFileQueue();
+      }
       shareLink.classList.remove("hidden");
 
       const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
@@ -143,6 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         progressBar.classList.remove("hidden");
         progressBarInner.style.width = "0%";
       }
+      renderFileQueue();
     });
     otherPeer.on("data", handleDataReceived);
     otherPeer.on("close", handlePeerClose);
@@ -322,4 +330,53 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer.on("close", handlePeerClose);
     }
   }
+
+  function renderFileQueue() {
+    const queueContainer = document.getElementById("fileQueueContainer");
+    const queueList = document.getElementById("fileQueueList");
+    if (!queueContainer || !queueList) return;
+
+    if (fileQueue.length === 0) {
+      queueContainer.classList.add("hidden");
+      queueContainer.classList.remove("flex");
+      return;
+    }
+
+    queueContainer.classList.remove("hidden");
+    queueContainer.classList.add("flex");
+    queueList.innerHTML = "";
+
+    fileQueue.forEach((file, index) => {
+      const isCurrent = index === currentFileIndex;
+      const isDone = index < currentFileIndex;
+
+      let statusBadge = "";
+      if (isCurrent && otherPeer && otherPeer.open) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">Sending</span>`;
+      } else if (isDone) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">Done</span>`;
+      } else {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">Pending</span>`;
+      }
+
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      
+      const item = document.createElement("div");
+      item.className = `p-3 rounded-xl border ${isCurrent && otherPeer && otherPeer.open ? 'border-teal-400 bg-teal-50' : 'border-slate-100 bg-white'} flex justify-between items-center transition-all`;
+      item.innerHTML = `
+        <div class="flex items-center space-x-3 overflow-hidden">
+            <svg class="w-6 h-6 ${isDone ? 'text-green-500' : 'text-slate-400'} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+            <div class="overflow-hidden">
+                <p class="text-sm font-semibold text-slate-700 truncate" title="${file.name}">${file.name}</p>
+                <p class="text-xs text-slate-500">${sizeMB} MB</p>
+            </div>
+        </div>
+        <div>
+            ${statusBadge}
+        </div>
+      `;
+      queueList.appendChild(item);
+    });
+  }
+
 });

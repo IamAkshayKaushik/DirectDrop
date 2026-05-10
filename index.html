@@ -31,18 +31,22 @@
         <div class="absolute bottom-[-20%] left-[20%] w-80 h-80 bg-slate-300/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
     </div>
 
-    <div class="bg-white/70 backdrop-blur-xl border border-white/50 p-8 rounded-3xl shadow-2xl max-w-lg w-full transition-all duration-300">
+    <div class="bg-white/70 backdrop-blur-xl border border-white/50 p-8 rounded-3xl shadow-2xl max-w-5xl w-full transition-all duration-300">
         
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-12 h-12 bg-teal-100 text-teal-600 rounded-xl mb-4 shadow-sm">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-            </div>
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">DirectDrop</h1>
-            <p class="text-sm text-slate-500 mt-2 font-medium">Fast, secure peer-to-peer file transfer</p>
-        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Left Column: Header, File Input, Queue -->
+            <div class="flex flex-col">
+                <!-- Header -->
+                <div class="text-left mb-8">
+                    <div class="inline-flex items-center justify-center w-12 h-12 bg-teal-100 text-teal-600 rounded-xl mb-4 shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">DirectDrop</h1>
+                    <p class="text-base text-slate-500 mt-2 font-medium">Fast, secure peer-to-peer file transfer</p>
+                </div>
 
         <!-- File Upload Area -->
         <div class="w-full mb-6">
@@ -55,12 +59,25 @@
                                 d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
                         </svg>
                     </div>
-                    <p class="mb-1 text-sm font-semibold text-slate-700">Click to select files</p>
-                    <p class="text-xs text-slate-500">or drag and drop here</p>
+                    <p class="mb-1 text-base font-semibold text-slate-700">Click to select files</p>
+                    <p class="text-sm text-slate-500">or drag and drop here</p>
                 </div>
                 <input id="fileInput" type="file" class="hidden" multiple />
             </label>
         </div>
+
+        <!-- File Queue List -->
+        <div id="fileQueueContainer" class="hidden flex-col space-y-3 mb-6 flex-1">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Transfer Queue</h3>
+            <div id="fileQueueList" class="flex flex-col space-y-3 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                <!-- Dynamic Queue Items -->
+            </div>
+        </div>
+        
+        </div> <!-- End Left Column -->
+
+        <!-- Right Column: Status, Chat, Progress -->
+        <div class="flex flex-col h-full">
 
         <!-- Connection / Share Link Info -->
         <div id="shareLink" class="mb-6 hidden bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -111,7 +128,7 @@
         </div>
 
         <!-- Chat Container -->
-        <div id="chatContainer" class="hidden w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+        <div id="chatContainer" class="hidden w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[300px]">
             <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex items-center space-x-2">
                 <div class="w-2 h-2 rounded-full bg-green-500"></div>
                 <h3 class="text-sm font-bold text-slate-700">Live Chat</h3>
@@ -126,6 +143,8 @@
             </form>
         </div>
 
+        </div> <!-- End Right Column -->
+        </div> <!-- End Grid -->
     </div>
 
     <!-- Drag and Drop logic -->
