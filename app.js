@@ -30,11 +30,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const acceptBtn = document.getElementById("acceptBtn");
   const rejectBtn = document.getElementById("rejectBtn");
 
+  const chatContainer = document.getElementById("chatContainer");
+  const chatMessages = document.getElementById("chatMessages");
+  const chatForm = document.getElementById("chatForm");
+  const chatInput = document.getElementById("chatInput");
+
   fileInput.addEventListener("change", handleFileSelection);
 
   peer.on("connection", handlePeerConnection);
 
   downloadBtn.addEventListener("click", initiateFileDownload);
+  
+  chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const msg = chatInput.value.trim();
+    if (msg && otherPeer) {
+      appendChatMessage("You", msg);
+      otherPeer.send({ type: "chat", text: msg });
+      chatInput.value = "";
+    }
+  });
+
+  function appendChatMessage(sender, text) {
+    const div = document.createElement("div");
+    div.className = "flex space-x-2";
+    div.innerHTML = `<span class="font-bold text-gray-700 dark:text-gray-300">${sender}:</span><span class="text-gray-600 dark:text-gray-400 break-words flex-1">${text}</span>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
   
   acceptBtn.addEventListener("click", () => {
     acceptRejectPrompt.classList.add("hidden");
@@ -128,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function handlePeerConnection(conn) {
     otherPeer = conn;
     otherPeer.on("open", () => {
+      chatContainer.classList.remove("hidden");
       sendFileMetadata();
       progressBar.classList.remove("hidden");
       progressBarInner.style.width = "0%";
@@ -178,7 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleDataReceived(data) {
     try {
-      if (data === "next") {
+      if (typeof data === "object" && data.type === "chat") {
+        appendChatMessage("Peer", data.text);
+      } else if (data === "next") {
         sendNextFileChunk();
       } else if (data === "reject") {
         console.log("Receiver rejected the file");
@@ -239,6 +265,9 @@ document.addEventListener("DOMContentLoaded", () => {
       progressBar.classList.remove("hidden");
       progressBarInner.style.width = "0%";
       otherPeer = peer.connect(peerIdParam);
+      otherPeer.on("open", () => {
+        chatContainer.classList.remove("hidden");
+      });
       receivedSize = 0;
       downloadInitiated = false;
       let totalChunks = 0;
@@ -271,11 +300,15 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (data === "all_done") {
           resetDownloadState();
         } else if (data !== "done" && typeof data === "object") {
-          receivedChunks[data.index] = data.data;
-          progressBar.classList.remove("hidden");
-          progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
-          updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, totalChunks * CHUNK_SIZE);
-          otherPeer.send("next");
+          if (data.type === "chat") {
+            appendChatMessage("Peer", data.text);
+          } else {
+            receivedChunks[data.index] = data.data;
+            progressBar.classList.remove("hidden");
+            progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
+            updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, totalChunks * CHUNK_SIZE);
+            otherPeer.send("next");
+          }
         } else if (!downloadInitiated && data === "done") {
           console.log(`Download complete for ${filename}.`);
           const file = new Blob(receivedChunks.map((chunk) => new Blob([chunk])));
