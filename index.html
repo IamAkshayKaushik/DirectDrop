@@ -6,74 +6,158 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./styles.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>File Sharing App</title>
+    <title>DirectDrop - Fast & Secure File Transfer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* Minimal custom styles for animations if needed */
+        @keyframes pulse-border {
+            0% { border-color: rgba(13, 148, 136, 0.4); }
+            50% { border-color: rgba(13, 148, 136, 1); }
+            100% { border-color: rgba(13, 148, 136, 0.4); }
+        }
+        .drag-active {
+            animation: pulse-border 2s infinite;
+            background-color: rgba(240, 253, 250, 0.5); /* teal-50 */
+        }
+    </style>
 </head>
-<!-- Make design like a SAAS -->
 
+<body class="bg-gradient-to-br from-slate-50 to-slate-200 min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+    
+    <!-- Decorative background blobs -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div class="absolute top-[20%] right-[-5%] w-72 h-72 bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-[-20%] left-[20%] w-80 h-80 bg-slate-300/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+    </div>
 
-<body class="bg-gray-200 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded shadow-md max-w-md w-full">
-        <h1 class="text-2xl font-bold mb-4">File Sharing App</h1>
-        <!-- file component start -->
-        <div class="flex items-center justify-center w-full">
-            <label for="fileInput"
-                class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
-                <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg class="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
-                    </svg>
-                    <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Select one or more files to transfer</p>
+    <div class="bg-white/70 backdrop-blur-xl border border-white/50 p-8 rounded-3xl shadow-2xl max-w-lg w-full transition-all duration-300">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-12 h-12 bg-teal-100 text-teal-600 rounded-xl mb-4 shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">DirectDrop</h1>
+            <p class="text-sm text-slate-500 mt-2 font-medium">Fast, secure peer-to-peer file transfer</p>
+        </div>
+
+        <!-- File Upload Area -->
+        <div class="w-full mb-6">
+            <label id="dropZone" for="fileInput"
+                class="flex flex-col items-center justify-center w-full h-56 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-slate-50 hover:border-teal-400 transition-all duration-200 group">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                    <div class="p-4 bg-white rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <svg class="w-8 h-8 text-teal-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
+                        </svg>
+                    </div>
+                    <p class="mb-1 text-sm font-semibold text-slate-700">Click to select files</p>
+                    <p class="text-xs text-slate-500">or drag and drop here</p>
                 </div>
                 <input id="fileInput" type="file" class="hidden" multiple />
             </label>
         </div>
 
-        <!-- file component end -->
-        <!-- <input type="file" id="fileInput" class="mb-4 border p-2"> -->
-        <div id="progressBar" class="mt-4 hidden w-full">
-            <div class="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
-                <div id="progressBarInner" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+        <!-- Connection / Share Link Info -->
+        <div id="shareLink" class="mb-6 hidden bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Share this code to connect</p>
+            <div class="flex items-center space-x-2">
+                <input type="text" id="linkInput" class="flex-1 bg-slate-50 border border-slate-200 text-slate-800 text-lg font-mono font-medium rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500/50" readonly>
+                <button onclick="document.getElementById('linkInput').select(); document.execCommand('copy');" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-xl transition-colors" title="Copy to clipboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
             </div>
-            <div class="flex justify-between text-xs text-gray-500 mt-2">
-                <span id="transferStats">Calculating...</span>
-                <span id="transferEta">ETA: --</span>
-            </div>
-        </div>
-        <div id="shareLink" class="mt-4 hidden">
-            <p class="font-bold">Share this link:</p>
-            <input type="text" id="linkInput" class="border p-2 w-full" readonly>
-        </div>
-        <div id="qrContainer" class="hidden">
-            <div id="qrcode"></div>
-        </div>
-        <button id="downloadBtn" class="mt-4 hidden w-full bg-green-500 text-white px-4 py-2 rounded">Download File</button>
-        
-        <div id="acceptRejectPrompt" class="mt-4 hidden p-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 text-center">
-            <p class="mb-2 text-gray-700 dark:text-gray-200 font-semibold">Incoming File Transfer</p>
-            <p id="incomingFileInfo" class="mb-4 text-sm text-gray-500 dark:text-gray-400">filename.ext (size)</p>
-            <div class="flex space-x-2">
-                <button id="acceptBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors">Accept</button>
-                <button id="rejectBtn" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded transition-colors">Reject</button>
+            <div id="qrContainer" class="hidden mt-4 flex justify-center p-2 bg-white rounded-xl border border-slate-100">
+                <div id="qrcode"></div>
             </div>
         </div>
 
-        <div id="chatContainer" class="mt-8 border-t pt-4 hidden w-full border-gray-200 dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Chat</h3>
-            <div id="chatMessages" class="h-32 overflow-y-auto mb-2 p-2 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700 text-sm flex flex-col space-y-1">
+        <!-- Transfer Progress -->
+        <div id="progressBar" class="mb-6 hidden w-full bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div class="flex justify-between items-end mb-2">
+                <span class="text-sm font-semibold text-slate-700">Transferring...</span>
+                <span id="transferEta" class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">ETA: --</span>
             </div>
-            <form id="chatForm" class="flex space-x-2">
-                <input type="text" id="chatInput" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message..." autocomplete="off">
-                <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm">Send</button>
+            <div class="w-full bg-slate-100 rounded-full h-2.5 mb-2 overflow-hidden">
+                <div id="progressBarInner" class="bg-teal-500 h-2.5 rounded-full transition-all duration-300 relative">
+                    <!-- Shimmer effect -->
+                    <div class="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse"></div>
+                </div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-500 mt-1">
+                <span id="transferStats" class="font-medium">Calculating speed...</span>
+            </div>
+        </div>
+
+        <!-- Receiver Accept/Reject Prompt -->
+        <div id="acceptRejectPrompt" class="mb-6 hidden p-5 bg-white border border-teal-100 rounded-2xl shadow-md transform transition-all">
+            <div class="flex items-center space-x-3 mb-3">
+                <div class="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-slate-800">Incoming File</p>
+                    <p id="incomingFileInfo" class="text-xs text-slate-500">filename.ext (0 MB)</p>
+                </div>
+            </div>
+            <div class="flex space-x-3 mt-4">
+                <button id="acceptBtn" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-all shadow-sm shadow-teal-500/30">Accept</button>
+                <button id="rejectBtn" class="flex-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold py-2.5 px-4 rounded-xl transition-all">Reject</button>
+            </div>
+        </div>
+
+        <!-- Download Button -->
+        <button id="downloadBtn" class="mb-6 hidden w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-slate-900/20 flex justify-center items-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>Save Download</span>
+        </button>
+
+        <!-- Chat Container -->
+        <div id="chatContainer" class="hidden w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex items-center space-x-2">
+                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                <h3 class="text-sm font-bold text-slate-700">Live Chat</h3>
+            </div>
+            <div id="chatMessages" class="h-40 overflow-y-auto p-4 text-sm flex flex-col space-y-3 bg-white scroll-smooth">
+                <!-- Messages will appear here -->
+                <div class="text-center text-xs text-slate-400 mt-auto">Connection established. Say hi!</div>
+            </div>
+            <form id="chatForm" class="p-3 border-t border-slate-100 bg-slate-50 flex space-x-2">
+                <input type="text" id="chatInput" class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all" placeholder="Type a message..." autocomplete="off">
+                <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-teal-500/20">Send</button>
             </form>
         </div>
+
     </div>
 
+    <!-- Drag and Drop logic -->
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            function preventDefaults (e) { e.preventDefault(); e.stopPropagation(); }
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                const input = document.getElementById('fileInput');
+                input.files = files;
+                input.dispatchEvent(new Event('change'));
+            }, false);
+        }
+    </script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="app.js"></script>
 </body>
-
 </html>
