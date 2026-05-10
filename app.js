@@ -29,8 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer.send("next");
   }
 
+  function generatePin() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   function initializePeerConnection() {
-    return new Peer({
+    const pin = generatePin();
+    return new Peer(pin, {
       config: {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
