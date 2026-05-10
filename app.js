@@ -12,10 +12,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
   let downloadInitiated = false;
   let receivedSize = 0;
+  
+  let transferStartTime = 0;
+  let lastSpeedUpdateTime = 0;
 
   const fileInput = document.getElementById("fileInput");
   const progressBar = document.getElementById("progressBar");
   const progressBarInner = document.getElementById("progressBarInner");
+  const transferStatsEl = document.getElementById("transferStats");
+  const transferEtaEl = document.getElementById("transferEta");
   const shareLink = document.getElementById("shareLink");
   const linkInput = document.getElementById("linkInput");
   const downloadBtn = document.getElementById("downloadBtn");
@@ -117,8 +122,41 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function sendFileMetadata() {
+    updateTransferAnalytics(0, fileChunks.length * CHUNK_SIZE);
     otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
     otherPeer.send(`size:${fileChunks.length.toString()}`);
+  }
+
+  function updateTransferAnalytics(currentBytes, totalBytes) {
+    const now = Date.now();
+    if (currentBytes === 0) {
+      transferStartTime = now;
+      lastSpeedUpdateTime = now;
+      if (transferStatsEl) transferStatsEl.innerText = "Calculating...";
+      if (transferEtaEl) transferEtaEl.innerText = "ETA: --";
+      return;
+    }
+    
+    if (now - lastSpeedUpdateTime < 500 && currentBytes < totalBytes) return;
+    
+    const timeElapsed = (now - transferStartTime) / 1000;
+    if (timeElapsed <= 0) return;
+
+    const speedBps = currentBytes / timeElapsed;
+    const speedMBps = (speedBps / (1024 * 1024)).toFixed(2);
+    
+    const bytesRemaining = totalBytes - currentBytes;
+    const etaSeconds = Math.round(bytesRemaining / speedBps);
+    
+    let etaString = `${etaSeconds}s`;
+    if (etaSeconds > 60) {
+      etaString = `${Math.floor(etaSeconds / 60)}m ${etaSeconds % 60}s`;
+    }
+
+    if (transferStatsEl) transferStatsEl.innerText = `${speedMBps} MB/s`;
+    if (transferEtaEl) transferEtaEl.innerText = `ETA: ${etaString}`;
+    
+    lastSpeedUpdateTime = now;
   }
 
   function handleDataReceived(data) {
@@ -146,6 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer.send({ index: currentChunk, data: fileChunks[currentChunk] });
       currentChunk++;
       progressBarInner.style.width = `${(currentChunk / fileChunks.length) * 100}%`;
+      updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileChunks.length * CHUNK_SIZE);
     } else {
       otherPeer.send("done");
     }
@@ -188,6 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log(`Total chunks for ${filename}: ${totalChunks}`);
           if (!isNaN(totalChunks) && totalChunks >= 0) {
             receivedChunks = new Array(totalChunks);
+            updateTransferAnalytics(0, totalChunks * CHUNK_SIZE);
             // If it's a subsequent file, request next chunk automatically
             if (downloadInitiated) {
               downloadInitiated = false;
@@ -200,6 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
           receivedChunks[data.index] = data.data;
           progressBar.classList.remove("hidden");
           progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
+          updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, totalChunks * CHUNK_SIZE);
           otherPeer.send("next");
         } else if (!downloadInitiated && data === "done") {
           console.log(`Download complete for ${filename}.`);

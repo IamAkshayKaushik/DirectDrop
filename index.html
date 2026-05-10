@@ -34,8 +34,14 @@
 
         <!-- file component end -->
         <!-- <input type="file" id="fileInput" class="mb-4 border p-2"> -->
-        <div id="progressBar" class="mt-4 hidden">
-            <div id="progressBarInner" class="bg-blue-500 h-4 rounded"></div>
+        <div id="progressBar" class="mt-4 hidden w-full">
+            <div class="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                <div id="progressBarInner" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span id="transferStats">Calculating...</span>
+                <span id="transferEta">ETA: --</span>
+            </div>
         </div>
         <div id="shareLink" class="mt-4 hidden">
             <p class="font-bold">Share this link:</p>
