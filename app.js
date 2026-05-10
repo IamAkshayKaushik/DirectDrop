@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const peer = initializePeerConnection();
 
+  let fileQueue = [];
+  let currentFileIndex = 0;
   let fileData;
   let fileChunks = [];
   let currentChunk = 0;
@@ -9,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const CHUNK_SIZE = 16 * 1024; // Size of each file chunk in bytes
   const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
   let downloadInitiated = false;
+  let receivedSize = 0;
 
   const fileInput = document.getElementById("fileInput");
   const progressBar = document.getElementById("progressBar");
@@ -48,29 +51,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-function handleFileSelection(e) {
-  fileData = e.target.files[0];
-  fileChunks = splitFileIntoChunks(fileData);
-  shareLink.classList.remove("hidden");
+  function prepareNextFile() {
+    if (currentFileIndex < fileQueue.length) {
+      fileData = fileQueue[currentFileIndex];
+      fileChunks = splitFileIntoChunks(fileData);
+      currentChunk = 0;
+      return true;
+    }
+    return false;
+  }
 
-  const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
-  linkInput.value = link;
+  function handleFileSelection(e) {
+    fileQueue = Array.from(e.target.files);
+    currentFileIndex = 0;
+    
+    if (fileQueue.length > 0) {
+      prepareNextFile();
+      shareLink.classList.remove("hidden");
 
-  // Show & generate QR code
-  const qrContainer = document.getElementById("qrContainer");
-  qrContainer.classList.remove("hidden");
-  // Clear any existing code
-  document.getElementById("qrcode").innerHTML = "";
-  // Generate new QR
-  new QRCode(document.getElementById("qrcode"), {
-    text: link,
-    width: 200,
-    height: 200,
-    colorDark: "#000000",
-    colorLight: "#ffffff",
-  });
-}
+      const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
+      linkInput.value = link;
 
+      // Show & generate QR code
+      const qrContainer = document.getElementById("qrContainer");
+      qrContainer.classList.remove("hidden");
+      // Clear any existing code
+      document.getElementById("qrcode").innerHTML = "";
+      // Generate new QR
+      new QRCode(document.getElementById("qrcode"), {
+        text: link,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+      });
+    }
+  }
 
   function splitFileIntoChunks(file) {
     const fileReader = new FileReader();
@@ -90,8 +106,7 @@ function handleFileSelection(e) {
   function handlePeerConnection(conn) {
     otherPeer = conn;
     otherPeer.on("open", () => {
-      otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
-      otherPeer.send(`size:${fileChunks.length.toString()}`);
+      sendFileMetadata();
       progressBar.classList.remove("hidden");
       progressBarInner.style.width = "0%";
     });
@@ -101,14 +116,25 @@ function handleFileSelection(e) {
     });
   }
 
+  function sendFileMetadata() {
+    otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
+    otherPeer.send(`size:${fileChunks.length.toString()}`);
+  }
+
   function handleDataReceived(data) {
     try {
       if (data === "next") {
         sendNextFileChunk();
+      } else if (data === "file_received") {
+        currentFileIndex++;
+        if (prepareNextFile()) {
+          sendFileMetadata();
+        } else {
+          otherPeer.send("all_done");
+          resetDownloadState();
+        }
       } else {
-        otherPeer.send("done");
-        // Reset currentChunk on successful download
-        resetDownloadState();
+        // Unexpected message
       }
     } catch (error) {
       handleDownloadError(error);
@@ -120,12 +146,8 @@ function handleFileSelection(e) {
       otherPeer.send({ index: currentChunk, data: fileChunks[currentChunk] });
       currentChunk++;
       progressBarInner.style.width = `${(currentChunk / fileChunks.length) * 100}%`;
-      if (currentChunk < fileChunks.length) {
-        otherPeer.send("next");
-      }
     } else {
       otherPeer.send("done");
-      resetDownloadState();
     }
   }
 
@@ -136,6 +158,8 @@ function handleFileSelection(e) {
 
   function resetDownloadState() {
     currentChunk = 0;
+    currentFileIndex = 0;
+    fileQueue = [];
     progressBarInner.style.width = "0%";
     progressBar.classList.add("hidden");
     //reload the page removing parameters
@@ -154,25 +178,31 @@ function handleFileSelection(e) {
       downloadInitiated = false;
       let totalChunks = 0;
       let filename = Date.now().toString();
+      
       otherPeer.on("data", (data) => {
         if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
           filename = data.slice(4);
+          downloadInitiated = false;
         } else if (typeof data === "string" && data.startsWith("size:")) {
           totalChunks = parseInt(data.slice(5));
-          console.log(`Total chunks: ${totalChunks}`);
+          console.log(`Total chunks for ${filename}: ${totalChunks}`);
           if (!isNaN(totalChunks) && totalChunks >= 0) {
             receivedChunks = new Array(totalChunks);
+            // If it's a subsequent file, request next chunk automatically
+            if (downloadInitiated) {
+              downloadInitiated = false;
+              otherPeer.send("next");
+            }
           }
+        } else if (data === "all_done") {
+          resetDownloadState();
         } else if (data !== "done" && typeof data === "object") {
           receivedChunks[data.index] = data.data;
-          // receivedSize += data.data.byteLength;
-          // console.log(`Received ${data.index} of ${totalChunks}.`);
-          // update progress bar
           progressBar.classList.remove("hidden");
           progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
           otherPeer.send("next");
         } else if (!downloadInitiated && data === "done") {
-          console.log("Download complete.", data);
+          console.log(`Download complete for ${filename}.`);
           const file = new Blob(receivedChunks.map((chunk) => new Blob([chunk])));
           const url = URL.createObjectURL(file);
           const a = document.createElement("a");
@@ -180,7 +210,7 @@ function handleFileSelection(e) {
           a.download = filename;
           a.click();
           downloadInitiated = true;
-          resetDownloadState();
+          otherPeer.send("file_received");
         }
       });
 
