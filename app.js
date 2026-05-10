@@ -24,12 +24,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const shareLink = document.getElementById("shareLink");
   const linkInput = document.getElementById("linkInput");
   const downloadBtn = document.getElementById("downloadBtn");
+  
+  const acceptRejectPrompt = document.getElementById("acceptRejectPrompt");
+  const incomingFileInfo = document.getElementById("incomingFileInfo");
+  const acceptBtn = document.getElementById("acceptBtn");
+  const rejectBtn = document.getElementById("rejectBtn");
 
   fileInput.addEventListener("change", handleFileSelection);
 
   peer.on("connection", handlePeerConnection);
 
   downloadBtn.addEventListener("click", initiateFileDownload);
+  
+  acceptBtn.addEventListener("click", () => {
+    acceptRejectPrompt.classList.add("hidden");
+    progressBar.classList.remove("hidden");
+    otherPeer.send("next");
+  });
+
+  rejectBtn.addEventListener("click", () => {
+    acceptRejectPrompt.classList.add("hidden");
+    otherPeer.send("reject");
+    resetDownloadState();
+  });
 
   peer.on("open", handlePeerOpen);
 
@@ -163,6 +180,15 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       if (data === "next") {
         sendNextFileChunk();
+      } else if (data === "reject") {
+        console.log("Receiver rejected the file");
+        currentFileIndex++;
+        if (prepareNextFile()) {
+          sendFileMetadata();
+        } else {
+          otherPeer.send("all_done");
+          resetDownloadState();
+        }
       } else if (data === "file_received") {
         currentFileIndex++;
         if (prepareNextFile()) {
@@ -228,11 +254,19 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!isNaN(totalChunks) && totalChunks >= 0) {
             receivedChunks = new Array(totalChunks);
             updateTransferAnalytics(0, totalChunks * CHUNK_SIZE);
-            // If it's a subsequent file, request next chunk automatically
+            
             if (downloadInitiated) {
+              // If it's a subsequent file, request next chunk automatically or prompt again.
+              // Let's prompt again for subsequent files too.
               downloadInitiated = false;
-              otherPeer.send("next");
             }
+            
+            const sizeMB = ((totalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
+            incomingFileInfo.innerText = `${filename} (${sizeMB} MB)`;
+            
+            acceptRejectPrompt.classList.remove("hidden");
+            downloadBtn.classList.add("hidden");
+            progressBar.classList.add("hidden");
           }
         } else if (data === "all_done") {
           resetDownloadState();
