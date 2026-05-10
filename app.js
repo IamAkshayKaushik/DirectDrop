@@ -4,26 +4,24 @@ document.addEventListener("DOMContentLoaded", () => {
   let fileQueue = [];
   let currentFileIndex = 0;
   let fileData;
-  let fileChunks = [];
   let currentChunk = 0;
   let receivedChunks = [];
   let otherPeer;
   const CHUNK_SIZE = 16 * 1024; // Size of each file chunk in bytes
   const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
   let downloadInitiated = false;
-  let receivedSize = 0;
   
   let transferStartTime = 0;
   let lastSpeedUpdateTime = 0;
 
   const fileInput = document.getElementById("fileInput");
+  const dropZone = document.getElementById("dropZone");
   const progressBar = document.getElementById("progressBar");
   const progressBarInner = document.getElementById("progressBarInner");
   const transferStatsEl = document.getElementById("transferStats");
   const transferEtaEl = document.getElementById("transferEta");
   const shareLink = document.getElementById("shareLink");
   const linkInput = document.getElementById("linkInput");
-  const downloadBtn = document.getElementById("downloadBtn");
   
   const acceptRejectPrompt = document.getElementById("acceptRejectPrompt");
   const incomingFileInfo = document.getElementById("incomingFileInfo");
@@ -39,12 +37,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   peer.on("connection", handlePeerConnection);
 
-  downloadBtn.addEventListener("click", initiateFileDownload);
-  
   chatForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const msg = chatInput.value.trim();
-    if (msg && otherPeer) {
+    if (msg && otherPeer && otherPeer.open) {
       appendChatMessage("You", msg);
       otherPeer.send({ type: "chat", text: msg });
       chatInput.value = "";
@@ -53,8 +49,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function appendChatMessage(sender, text) {
     const div = document.createElement("div");
-    div.className = "flex space-x-2";
-    div.innerHTML = `<span class="font-bold text-gray-700 dark:text-gray-300">${sender}:</span><span class="text-gray-600 dark:text-gray-400 break-words flex-1">${text}</span>`;
+    div.className = "flex space-x-2 animate-fade-in";
+    div.innerHTML = `<span class="font-bold text-slate-700">${sender}:</span><span class="text-slate-600 break-words flex-1">${text}</span>`;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
@@ -68,14 +64,10 @@ document.addEventListener("DOMContentLoaded", () => {
   rejectBtn.addEventListener("click", () => {
     acceptRejectPrompt.classList.add("hidden");
     otherPeer.send("reject");
-    resetDownloadState();
+    resetProgressState();
   });
 
   peer.on("open", handlePeerOpen);
-
-  function initiateFileDownload() {
-    otherPeer.send("next");
-  }
 
   function generatePin() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -88,9 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:freestun.net:3479" },
-          { urls: "stun:freestun.net:5350" },
-          { urls: "turn:freestun.net:3479", username: "free", credential: "free" },
-          { urls: "turn:freestun.net:5350", username: "free", credential: "free" },
+          { urls: "stun:freestun.net:5350" }
         ],
       },
     });
@@ -99,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function prepareNextFile() {
     if (currentFileIndex < fileQueue.length) {
       fileData = fileQueue[currentFileIndex];
-      fileChunks = splitFileIntoChunks(fileData);
       currentChunk = 0;
       return true;
     }
@@ -107,65 +96,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleFileSelection(e) {
-    fileQueue = Array.from(e.target.files);
-    currentFileIndex = 0;
-    
-    if (fileQueue.length > 0) {
+    const newFiles = Array.from(e.target.files);
+    if (newFiles.length === 0) return;
+
+    if (otherPeer && otherPeer.open) {
+      const wasIdle = currentFileIndex >= fileQueue.length;
+      fileQueue.push(...newFiles);
+      if (wasIdle) {
+        if (prepareNextFile()) {
+          sendFileMetadata();
+        }
+      }
+    } else {
+      fileQueue = newFiles;
+      currentFileIndex = 0;
       prepareNextFile();
       shareLink.classList.remove("hidden");
 
       const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
       linkInput.value = link;
 
-      // Show & generate QR code
       const qrContainer = document.getElementById("qrContainer");
       qrContainer.classList.remove("hidden");
-      // Clear any existing code
       document.getElementById("qrcode").innerHTML = "";
-      // Generate new QR
       new QRCode(document.getElementById("qrcode"), {
         text: link,
         width: 200,
         height: 200,
-        colorDark: "#000000",
+        colorDark: "#0f172a", // slate-900
         colorLight: "#ffffff",
       });
     }
-  }
-
-  function splitFileIntoChunks(file) {
-    const fileReader = new FileReader();
-    const chunks = [];
-    fileReader.readAsArrayBuffer(file);
-    fileReader.onloadend = () => {
-      const fileSize = file.size;
-      const numberOfChunks = Math.ceil(fileSize / CHUNK_SIZE);
-
-      for (let i = 0; i < numberOfChunks; i++) {
-        chunks.push(fileReader.result.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE));
-      }
-    };
-    return chunks;
+    
+    // Reset file input so same file can be selected again if needed
+    fileInput.value = "";
   }
 
   function handlePeerConnection(conn) {
     otherPeer = conn;
     otherPeer.on("open", () => {
       chatContainer.classList.remove("hidden");
-      sendFileMetadata();
-      progressBar.classList.remove("hidden");
-      progressBarInner.style.width = "0%";
+      shareLink.classList.add("hidden");
+      
+      if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
+        sendFileMetadata();
+        progressBar.classList.remove("hidden");
+        progressBarInner.style.width = "0%";
+      }
     });
     otherPeer.on("data", handleDataReceived);
-    otherPeer.on("close", () => {
-      resetDownloadState();
-    });
+    otherPeer.on("close", handlePeerClose);
   }
 
   function sendFileMetadata() {
-    updateTransferAnalytics(0, fileChunks.length * CHUNK_SIZE);
+    const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
+    updateTransferAnalytics(0, fileData.size);
     otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
-    otherPeer.send(`size:${fileChunks.length.toString()}`);
+    otherPeer.send(`size:${totalChunks.toString()}`);
   }
 
   function updateTransferAnalytics(currentBytes, totalBytes) {
@@ -173,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentBytes === 0) {
       transferStartTime = now;
       lastSpeedUpdateTime = now;
-      if (transferStatsEl) transferStatsEl.innerText = "Calculating...";
+      if (transferStatsEl) transferStatsEl.innerText = "Calculating speed...";
       if (transferEtaEl) transferEtaEl.innerText = "ETA: --";
       return;
     }
@@ -208,35 +195,39 @@ document.addEventListener("DOMContentLoaded", () => {
         sendNextFileChunk();
       } else if (data === "reject") {
         console.log("Receiver rejected the file");
-        currentFileIndex++;
-        if (prepareNextFile()) {
-          sendFileMetadata();
-        } else {
-          otherPeer.send("all_done");
-          resetDownloadState();
-        }
+        moveToNextFile();
       } else if (data === "file_received") {
-        currentFileIndex++;
-        if (prepareNextFile()) {
-          sendFileMetadata();
-        } else {
-          otherPeer.send("all_done");
-          resetDownloadState();
-        }
-      } else {
-        // Unexpected message
+        moveToNextFile();
       }
     } catch (error) {
       handleDownloadError(error);
     }
   }
 
-  function sendNextFileChunk() {
-    if (currentChunk < fileChunks.length) {
-      otherPeer.send({ index: currentChunk, data: fileChunks[currentChunk] });
+  function moveToNextFile() {
+    currentFileIndex++;
+    if (prepareNextFile()) {
+      sendFileMetadata();
+    } else {
+      otherPeer.send("all_done");
+      resetProgressState();
+    }
+  }
+
+  async function sendNextFileChunk() {
+    const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
+    if (currentChunk < totalChunks) {
+      const start = currentChunk * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, fileData.size);
+      const chunkBlob = fileData.slice(start, end);
+      
+      const arrayBuffer = await chunkBlob.arrayBuffer();
+      
+      otherPeer.send({ index: currentChunk, data: arrayBuffer });
       currentChunk++;
-      progressBarInner.style.width = `${(currentChunk / fileChunks.length) * 100}%`;
-      updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileChunks.length * CHUNK_SIZE);
+      
+      if (progressBarInner) progressBarInner.style.width = `${(currentChunk / totalChunks) * 100}%`;
+      updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileData.size);
     } else {
       otherPeer.send("done");
     }
@@ -244,31 +235,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleDownloadError(error) {
     console.error("An error occurred during the file transfer: ", error);
-    resetDownloadState();
+    resetProgressState();
   }
 
-  function resetDownloadState() {
+  function resetProgressState() {
     currentChunk = 0;
-    currentFileIndex = 0;
-    fileQueue = [];
-    progressBarInner.style.width = "0%";
-    progressBar.classList.add("hidden");
-    //reload the page removing parameters
-    window.location.href = window.location.href.split("?")[0];
+    if (progressBarInner) progressBarInner.style.width = "0%";
+    if (progressBar) progressBar.classList.add("hidden");
+    if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
+  }
+
+  function handlePeerClose() {
+    resetProgressState();
+    appendChatMessage("System", "Peer disconnected.");
+    otherPeer = null;
+    
+    // If we are receiver, maybe we should just alert.
+    // If sender, we can show share link again.
+    if (!new URLSearchParams(window.location.search).get("peer")) {
+       shareLink.classList.remove("hidden");
+    }
   }
 
   function handlePeerOpen(id) {
     const peerIdParam = new URLSearchParams(window.location.search).get("peer") || null;
     if (peerIdParam) {
+      // Receiver Mode
+      if (dropZone) dropZone.parentElement.classList.add("hidden"); // Hide file input for receiver
       shareLink.classList.add("hidden");
-      downloadBtn.classList.remove("hidden");
-      progressBar.classList.remove("hidden");
-      progressBarInner.style.width = "0%";
+      
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
         chatContainer.classList.remove("hidden");
+        appendChatMessage("System", "Connected to sender.");
       });
-      receivedSize = 0;
+      
       downloadInitiated = false;
       let totalChunks = 0;
       let filename = Date.now().toString();
@@ -277,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
           filename = data.slice(4);
           downloadInitiated = false;
+          receivedChunks = [];
         } else if (typeof data === "string" && data.startsWith("size:")) {
           totalChunks = parseInt(data.slice(5));
           console.log(`Total chunks for ${filename}: ${totalChunks}`);
@@ -284,47 +286,40 @@ document.addEventListener("DOMContentLoaded", () => {
             receivedChunks = new Array(totalChunks);
             updateTransferAnalytics(0, totalChunks * CHUNK_SIZE);
             
-            if (downloadInitiated) {
-              // If it's a subsequent file, request next chunk automatically or prompt again.
-              // Let's prompt again for subsequent files too.
-              downloadInitiated = false;
-            }
-            
             const sizeMB = ((totalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
-            incomingFileInfo.innerText = `${filename} (${sizeMB} MB)`;
+            if (incomingFileInfo) incomingFileInfo.innerText = `${filename} (${sizeMB} MB)`;
             
             acceptRejectPrompt.classList.remove("hidden");
-            downloadBtn.classList.add("hidden");
             progressBar.classList.add("hidden");
           }
         } else if (data === "all_done") {
-          resetDownloadState();
+          resetProgressState();
+          appendChatMessage("System", "All files transferred successfully.");
         } else if (data !== "done" && typeof data === "object") {
           if (data.type === "chat") {
             appendChatMessage("Peer", data.text);
           } else {
             receivedChunks[data.index] = data.data;
-            progressBar.classList.remove("hidden");
-            progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
+            if (progressBar) progressBar.classList.remove("hidden");
+            if (progressBarInner) progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
             updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, totalChunks * CHUNK_SIZE);
             otherPeer.send("next");
           }
         } else if (!downloadInitiated && data === "done") {
           console.log(`Download complete for ${filename}.`);
-          const file = new Blob(receivedChunks.map((chunk) => new Blob([chunk])));
+          const file = new Blob(receivedChunks);
           const url = URL.createObjectURL(file);
           const a = document.createElement("a");
           a.href = url;
           a.download = filename;
           a.click();
+          URL.revokeObjectURL(url);
           downloadInitiated = true;
           otherPeer.send("file_received");
         }
       });
 
-      otherPeer.on("close", () => {
-        resetDownloadState();
-      });
+      otherPeer.on("close", handlePeerClose);
     }
   }
 });
