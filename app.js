@@ -11,6 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const FILENAME_PREFIX = "bbb.";
   let downloadInitiated = false;
 
+  let isSending = false;
+  let isReceiving = false;
+
+  let remotePeerId = null;
+  let userInitiatedClose = false;
+  let reconnectAttempt = 0;
+  let reconnectTimer = null;
+
   let incomingTotalChunks = 0;
   let incomingFilename = "";
 
@@ -94,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer = peer.connect(pin);
     otherPeer.on("open", () => {
       clearTimeout(connectTimeout);
+      remotePeerId = pin;
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect";
       chatContainer.classList.remove("hidden");
@@ -123,6 +132,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function setupPeerEvents() {
     peer.on("connection", handlePeerConnection);
     peer.on("open", handlePeerOpen);
+    peer.on("disconnected", () => {
+      if (!peer.destroyed) {
+        showToast("Reconnecting to server...", "info");
+        peer.reconnect();
+      }
+    });
     peer.on("error", (err) => {
       if (err.type === "unavailable-id") {
         showToast("PIN collision — regenerating...", "info");
@@ -176,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   rejectBtn.addEventListener("click", () => {
+    isReceiving = false;
     acceptRejectPrompt.classList.add("hidden");
     otherPeer.send("reject");
     resetProgressState();
@@ -216,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (otherPeer && otherPeer.open) {
       const wasIdle = currentFileIndex >= fileQueue.length;
       fileQueue.push(...newFiles);
-      if (wasIdle) {
+      if (wasIdle && !isReceiving) {
         if (prepareNextFile()) {
           sendFileMetadata();
         }
@@ -254,6 +270,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function handlePeerConnection(conn) {
     otherPeer = conn;
     otherPeer.on("open", () => {
+      remotePeerId = conn.peer;
+      reconnectAttempt = 0;
       chatContainer.classList.remove("hidden");
       if (connectionHelp) connectionHelp.classList.add("hidden");
       shareLink.classList.add("hidden");
@@ -272,6 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function sendFileMetadata() {
+    isSending = true;
     const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
     updateTransferAnalytics(0, fileData.size);
     otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
@@ -315,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof data === "object" && data.type === "chat") {
         appendChatMessage("Peer", data.text);
       } else if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
+        isReceiving = true;
         incomingFilename = data.slice(FILENAME_PREFIX.length);
         downloadInitiated = false;
         receivedChunks = [];
@@ -338,12 +358,21 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (data === "file_received") {
         moveToNextFile();
       } else if (data === "cancel_transfer") {
+        isReceiving = false;
         showToast("Sender cancelled the transfer", "info");
         receivedChunks = [];
         resetProgressState();
       } else if (data === "all_done") {
+        isReceiving = false;
         resetProgressState();
         showToast("All files transferred successfully!", "success");
+        if (currentFileIndex < fileQueue.length) {
+          if (prepareNextFile()) {
+            sendFileMetadata();
+            progressBar.classList.remove("hidden");
+            progressBarInner.style.width = "0%";
+          }
+        }
       } else if (data === "done" && !downloadInitiated) {
         showToast(`Downloaded: ${incomingFilename}`, "success");
         const file = new Blob(receivedChunks);
@@ -372,6 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (prepareNextFile()) {
       sendFileMetadata();
     } else {
+      isSending = false;
       otherPeer.send("all_done");
       resetProgressState();
     }
@@ -410,14 +440,56 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handlePeerClose() {
+    isSending = false;
+    isReceiving = false;
     resetProgressState();
-    showToast("Peer disconnected", "error");
     otherPeer = null;
-    chatContainer.classList.add("hidden");
-    pinEntrySection.classList.remove("hidden");
 
-    if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
-       shareLink.classList.remove("hidden");
+    if (userInitiatedClose) {
+      userInitiatedClose = false;
+      remotePeerId = null;
+      showToast("Disconnected", "info");
+      chatContainer.classList.add("hidden");
+      pinEntrySection.classList.remove("hidden");
+      if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
+        shareLink.classList.remove("hidden");
+      }
+      return;
+    }
+
+    if (remotePeerId && reconnectAttempt < 3) {
+      const delays = [2000, 4000, 8000];
+      const delay = delays[reconnectAttempt];
+      reconnectAttempt++;
+      showToast(`Reconnecting... attempt ${reconnectAttempt}/3`, "info");
+
+      reconnectTimer = setTimeout(() => {
+        if (!peer || peer.destroyed) return;
+        otherPeer = peer.connect(remotePeerId);
+        otherPeer.on("open", () => {
+          reconnectAttempt = 0;
+          showToast("Reconnected!", "success");
+          chatContainer.classList.remove("hidden");
+          if (connectionHelp) connectionHelp.classList.add("hidden");
+          pinEntrySection.classList.add("hidden");
+          shareLink.classList.add("hidden");
+          renderFileQueue();
+        });
+        otherPeer.on("data", handleDataReceived);
+        otherPeer.on("close", handlePeerClose);
+        otherPeer.on("error", () => {
+          handlePeerClose();
+        });
+      }, delay);
+    } else {
+      reconnectAttempt = 0;
+      remotePeerId = null;
+      showToast("Connection lost. Enter PIN to reconnect.", "error");
+      chatContainer.classList.add("hidden");
+      pinEntrySection.classList.remove("hidden");
+      if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
+        shareLink.classList.remove("hidden");
+      }
     }
   }
 
@@ -429,8 +501,31 @@ document.addEventListener("DOMContentLoaded", () => {
       shareLink.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
 
+      if (connectionHelp) {
+        connectionHelp.innerHTML = `
+          <div class="flex items-center justify-center space-x-3 py-2">
+            <svg class="animate-spin h-5 w-5 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span class="text-sm font-medium text-slate-600">Connecting to peer...</span>
+          </div>`;
+      }
+
+      history.replaceState(null, "", window.location.pathname);
+
+      const connectTimeout = setTimeout(() => {
+        showToast("Connection timed out. Peer may be offline.", "error");
+        if (otherPeer) { otherPeer.close(); otherPeer = null; }
+        pinEntrySection.classList.remove("hidden");
+        if (connectionHelp) connectionHelp.classList.add("hidden");
+      }, 10000);
+
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
+        clearTimeout(connectTimeout);
+        remotePeerId = peerIdParam;
+        reconnectAttempt = 0;
         chatContainer.classList.remove("hidden");
         if (connectionHelp) connectionHelp.classList.add("hidden");
         showToast("Connected to peer!", "success");
@@ -438,12 +533,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       otherPeer.on("data", handleDataReceived);
       otherPeer.on("close", handlePeerClose);
+      otherPeer.on("error", (err) => {
+        clearTimeout(connectTimeout);
+        showToast("Connection failed: " + err.message, "error");
+        pinEntrySection.classList.remove("hidden");
+        if (connectionHelp) connectionHelp.classList.add("hidden");
+      });
     }
   }
 
   function cancelFileAtIndex(index) {
     const isCurrent = index === currentFileIndex;
-    if (isCurrent && otherPeer && otherPeer.open) {
+    if (isCurrent && otherPeer && otherPeer.open && isSending) {
       otherPeer.send("cancel_transfer");
       showToast(`Cancelled: ${fileQueue[index].name}`, "info");
       fileQueue.splice(index, 1);
@@ -493,7 +594,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let statusBadge = "";
       let cancelBtn = "";
-      if (isCurrent && otherPeer && otherPeer.open) {
+      if (isCurrent && otherPeer && otherPeer.open && isSending) {
           statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">Sending</span>`;
           cancelBtn = `<button data-cancel="${index}" class="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors cursor-pointer">Cancel</button>`;
       } else if (isDone) {
@@ -506,7 +607,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
 
       const item = document.createElement("div");
-      item.className = `p-3 rounded-xl border ${isCurrent && otherPeer && otherPeer.open ? 'border-teal-400 bg-teal-50' : 'border-slate-100 bg-white'} flex justify-between items-center transition-all`;
+      item.className = `p-3 rounded-xl border ${isCurrent && otherPeer && otherPeer.open && isSending ? 'border-teal-400 bg-teal-50' : 'border-slate-100 bg-white'} flex justify-between items-center transition-all`;
       item.innerHTML = `
         <div class="flex items-center space-x-3 overflow-hidden">
             ${getFileIcon(file.name, isDone ? 'text-green-500' : 'text-slate-400')}
