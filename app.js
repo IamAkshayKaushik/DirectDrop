@@ -33,6 +33,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById("chatForm");
   const chatInput = document.getElementById("chatInput");
 
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    const bgColors = {
+      success: 'bg-emerald-500 border-emerald-600 text-white',
+      error: 'bg-rose-500 border-rose-600 text-white',
+      info: 'bg-slate-800 border-slate-700 text-white'
+    };
+    toast.className = `flex items-center p-4 rounded-xl border shadow-lg transform transition-all duration-300 translate-y-2 opacity-0 ${bgColors[type]}`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+    setTimeout(() => {
+      toast.classList.add('opacity-0', 'translate-y-[-10px]');
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
+
   fileInput.addEventListener("change", handleFileSelection);
 
   peer.on("connection", handlePeerConnection);
@@ -144,7 +162,8 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer.on("open", () => {
       chatContainer.classList.remove("hidden");
       shareLink.classList.add("hidden");
-      
+      showToast("Peer connected!", "success");
+
       if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
         sendFileMetadata();
         progressBar.classList.remove("hidden");
@@ -202,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (data === "next") {
         sendNextFileChunk();
       } else if (data === "reject") {
-        console.log("Receiver rejected the file");
+        showToast("Receiver rejected the file", "error");
         moveToNextFile();
       } else if (data === "file_received") {
         moveToNextFile();
@@ -243,6 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleDownloadError(error) {
     console.error("An error occurred during the file transfer: ", error);
+    showToast("File transfer error", "error");
     resetProgressState();
   }
 
@@ -255,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handlePeerClose() {
     resetProgressState();
-    appendChatMessage("System", "Peer disconnected.");
+    showToast("Peer disconnected", "error");
     otherPeer = null;
     
     // If we are receiver, maybe we should just alert.
@@ -275,7 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
         chatContainer.classList.remove("hidden");
-        appendChatMessage("System", "Connected to sender.");
+        showToast("Connected to sender!", "success");
       });
       
       downloadInitiated = false;
@@ -302,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else if (data === "all_done") {
           resetProgressState();
-          appendChatMessage("System", "All files transferred successfully.");
+          showToast("All files transferred successfully!", "success");
         } else if (data !== "done" && typeof data === "object") {
           if (data.type === "chat") {
             appendChatMessage("Peer", data.text);
@@ -314,7 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
             otherPeer.send("next");
           }
         } else if (!downloadInitiated && data === "done") {
-          console.log(`Download complete for ${filename}.`);
+          showToast(`Downloaded: ${filename}`, "success");
           const file = new Blob(receivedChunks);
           const url = URL.createObjectURL(file);
           const a = document.createElement("a");
