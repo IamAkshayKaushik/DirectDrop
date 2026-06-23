@@ -66,10 +66,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function appendChatMessage(sender, text) {
-    const div = document.createElement("div");
-    div.className = "flex space-x-2 animate-fade-in";
-    div.innerHTML = `<span class="font-bold text-slate-700">${sender}:</span><span class="text-slate-600 break-words flex-1">${text}</span>`;
-    chatMessages.appendChild(div);
+    const wrapper = document.createElement("div");
+    wrapper.className = "flex animate-fade-in mb-2";
+
+    if (sender === "You") {
+      wrapper.classList.add("justify-end");
+      wrapper.innerHTML = `<div class="max-w-[75%] px-4 py-2 rounded-2xl rounded-br-sm bg-teal-500 text-white text-sm shadow">${text}</div>`;
+    } else if (sender === "Peer") {
+      wrapper.classList.add("justify-start");
+      wrapper.innerHTML = `<div class="max-w-[75%] px-4 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-slate-700 text-sm shadow-sm">${text}</div>`;
+    } else {
+      wrapper.classList.add("justify-center");
+      wrapper.innerHTML = `<div class="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">${text}</div>`;
+    }
+
+    chatMessages.appendChild(wrapper);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
   
