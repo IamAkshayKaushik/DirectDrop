@@ -33,6 +33,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById("chatForm");
   const chatInput = document.getElementById("chatInput");
 
+  const pinForm = document.getElementById("pinForm");
+  const pinInput = document.getElementById("pinInput");
+  const myPinCode = document.getElementById("myPinCode");
+  const pinEntrySection = document.getElementById("pinEntrySection");
+
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -50,6 +55,38 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => toast.remove(), 300);
     }, 4000);
   }
+
+  pinForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const pin = pinInput.value.trim();
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      showToast("Please enter a valid 6-digit PIN", "error");
+      return;
+    }
+    if (otherPeer && otherPeer.open) {
+      showToast("Already connected to a peer", "info");
+      return;
+    }
+    otherPeer = peer.connect(pin);
+    otherPeer.on("open", () => {
+      chatContainer.classList.remove("hidden");
+      pinEntrySection.classList.add("hidden");
+      shareLink.classList.add("hidden");
+      showToast("Connected to peer!", "success");
+      if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
+        sendFileMetadata();
+        progressBar.classList.remove("hidden");
+        progressBarInner.style.width = "0%";
+      }
+      renderFileQueue();
+    });
+    otherPeer.on("data", handleDataReceived);
+    otherPeer.on("close", handlePeerClose);
+    otherPeer.on("error", (err) => {
+      showToast("Connection failed: " + err.message, "error");
+    });
+    showToast("Connecting to PIN " + pin + "...", "info");
+  });
 
   fileInput.addEventListener("change", handleFileSelection);
 
@@ -173,6 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer.on("open", () => {
       chatContainer.classList.remove("hidden");
       shareLink.classList.add("hidden");
+      pinEntrySection.classList.add("hidden");
       showToast("Peer connected!", "success");
 
       if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
@@ -297,11 +335,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handlePeerOpen(id) {
+    if (myPinCode) myPinCode.textContent = id;
+
     const peerIdParam = new URLSearchParams(window.location.search).get("peer") || null;
     if (peerIdParam) {
-      // Receiver Mode
-      if (dropZone) dropZone.parentElement.classList.add("hidden"); // Hide file input for receiver
+      // Receiver Mode — connected via URL
+      if (dropZone) dropZone.parentElement.classList.add("hidden");
       shareLink.classList.add("hidden");
+      pinEntrySection.classList.add("hidden");
       
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
