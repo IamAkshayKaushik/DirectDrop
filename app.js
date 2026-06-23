@@ -36,6 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById("chatForm");
   const chatInput = document.getElementById("chatInput");
 
+  const connectionHelp = document.getElementById("connectionHelp");
+
   const pinForm = document.getElementById("pinForm");
   const pinInput = document.getElementById("pinInput");
   const myPinCode = document.getElementById("myPinCode");
@@ -95,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect";
       chatContainer.classList.remove("hidden");
+      if (connectionHelp) connectionHelp.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
       shareLink.classList.add("hidden");
       showToast("Connected to peer!", "success");
@@ -252,6 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer = conn;
     otherPeer.on("open", () => {
       chatContainer.classList.remove("hidden");
+      if (connectionHelp) connectionHelp.classList.add("hidden");
       shareLink.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
       showToast("Peer connected!", "success");
@@ -426,6 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
         chatContainer.classList.remove("hidden");
+        if (connectionHelp) connectionHelp.classList.add("hidden");
         showToast("Connected to peer!", "success");
         renderFileQueue();
       });
