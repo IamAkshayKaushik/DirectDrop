@@ -41,6 +41,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const myPinCode = document.getElementById("myPinCode");
   const pinEntrySection = document.getElementById("pinEntrySection");
 
+  document.getElementById("myPinDisplay").addEventListener("click", () => {
+    if (peer && peer.id) {
+      navigator.clipboard.writeText(peer.id).then(() => {
+        showToast("PIN copied!", "success");
+      });
+    }
+  });
+
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
