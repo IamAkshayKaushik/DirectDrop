@@ -385,6 +385,10 @@ document.addEventListener("DOMContentLoaded", () => {
             acceptRejectPrompt.classList.remove("hidden");
             progressBar.classList.add("hidden");
           }
+        } else if (data === "cancel_transfer") {
+          showToast("Sender cancelled the transfer", "info");
+          receivedChunks = [];
+          resetProgressState();
         } else if (data === "all_done") {
           resetProgressState();
           showToast("All files transferred successfully!", "success");
@@ -416,6 +420,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function cancelFileAtIndex(index) {
+    const isCurrent = index === currentFileIndex;
+    if (isCurrent && otherPeer && otherPeer.open) {
+      otherPeer.send("cancel_transfer");
+      showToast(`Cancelled: ${fileQueue[index].name}`, "info");
+      fileQueue.splice(index, 1);
+      resetProgressState();
+      if (prepareNextFile()) {
+        sendFileMetadata();
+      }
+    } else if (index > currentFileIndex) {
+      showToast(`Removed: ${fileQueue[index].name}`, "info");
+      fileQueue.splice(index, 1);
+      renderFileQueue();
+    }
+  }
+
   function renderFileQueue() {
     const queueContainer = document.getElementById("fileQueueContainer");
     const queueList = document.getElementById("fileQueueList");
@@ -436,16 +457,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const isDone = index < currentFileIndex;
 
       let statusBadge = "";
+      let cancelBtn = "";
       if (isCurrent && otherPeer && otherPeer.open) {
           statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">Sending</span>`;
+          cancelBtn = `<button data-cancel="${index}" class="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors cursor-pointer">Cancel</button>`;
       } else if (isDone) {
           statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">Done</span>`;
       } else {
           statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">Pending</span>`;
+          cancelBtn = `<button data-cancel="${index}" class="ml-2 w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-rose-100 hover:text-rose-500 transition-colors cursor-pointer text-xs">&times;</button>`;
       }
 
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      
+
       const item = document.createElement("div");
       item.className = `p-3 rounded-xl border ${isCurrent && otherPeer && otherPeer.open ? 'border-teal-400 bg-teal-50' : 'border-slate-100 bg-white'} flex justify-between items-center transition-all`;
       item.innerHTML = `
@@ -456,11 +480,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 <p class="text-xs text-slate-500">${sizeMB} MB</p>
             </div>
         </div>
-        <div>
-            ${statusBadge}
+        <div class="flex items-center">
+            ${statusBadge}${cancelBtn}
         </div>
       `;
       queueList.appendChild(item);
+    });
+
+    queueList.querySelectorAll("[data-cancel]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        cancelFileAtIndex(parseInt(btn.dataset.cancel));
+      });
     });
   }
 
