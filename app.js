@@ -7,10 +7,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentChunk = 0;
   let receivedChunks = [];
   let otherPeer;
-  const CHUNK_SIZE = 16 * 1024; // Size of each file chunk in bytes
-  const FILENAME_PREFIX = "bbb."; // Prefix for filename messages
+  const CHUNK_SIZE = 16 * 1024;
+  const FILENAME_PREFIX = "bbb.";
   let downloadInitiated = false;
-  
+
+  let incomingTotalChunks = 0;
+  let incomingFilename = "";
+
   let transferStartTime = 0;
   let lastSpeedUpdateTime = 0;
 
@@ -280,6 +283,20 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       if (typeof data === "object" && data.type === "chat") {
         appendChatMessage("Peer", data.text);
+      } else if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
+        incomingFilename = data.slice(FILENAME_PREFIX.length);
+        downloadInitiated = false;
+        receivedChunks = [];
+      } else if (typeof data === "string" && data.startsWith("size:")) {
+        incomingTotalChunks = parseInt(data.slice(5));
+        if (!isNaN(incomingTotalChunks) && incomingTotalChunks >= 0) {
+          receivedChunks = new Array(incomingTotalChunks);
+          updateTransferAnalytics(0, incomingTotalChunks * CHUNK_SIZE);
+          const sizeMB = ((incomingTotalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
+          if (incomingFileInfo) incomingFileInfo.innerText = `${incomingFilename} (${sizeMB} MB)`;
+          acceptRejectPrompt.classList.remove("hidden");
+          progressBar.classList.add("hidden");
+        }
       } else if (data === "next") {
         sendNextFileChunk();
       } else if (data === "reject") {
@@ -287,6 +304,30 @@ document.addEventListener("DOMContentLoaded", () => {
         moveToNextFile();
       } else if (data === "file_received") {
         moveToNextFile();
+      } else if (data === "cancel_transfer") {
+        showToast("Sender cancelled the transfer", "info");
+        receivedChunks = [];
+        resetProgressState();
+      } else if (data === "all_done") {
+        resetProgressState();
+        showToast("All files transferred successfully!", "success");
+      } else if (data === "done" && !downloadInitiated) {
+        showToast(`Downloaded: ${incomingFilename}`, "success");
+        const file = new Blob(receivedChunks);
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = incomingFilename;
+        a.click();
+        URL.revokeObjectURL(url);
+        downloadInitiated = true;
+        otherPeer.send("file_received");
+      } else if (typeof data === "object" && data.index !== undefined) {
+        receivedChunks[data.index] = data.data;
+        if (progressBar) progressBar.classList.remove("hidden");
+        if (progressBarInner) progressBarInner.style.width = `${(data.index / incomingTotalChunks) * 100}%`;
+        updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, incomingTotalChunks * CHUNK_SIZE);
+        otherPeer.send("next");
       }
     } catch (error) {
       handleDownloadError(error);
@@ -352,70 +393,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const peerIdParam = new URLSearchParams(window.location.search).get("peer") || null;
     if (peerIdParam) {
-      // Receiver Mode — connected via URL
-      if (dropZone) dropZone.parentElement.classList.add("hidden");
       shareLink.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
-      
+
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
         chatContainer.classList.remove("hidden");
-        showToast("Connected to sender!", "success");
+        showToast("Connected to peer!", "success");
+        renderFileQueue();
       });
-      
-      downloadInitiated = false;
-      let totalChunks = 0;
-      let filename = Date.now().toString();
-      
-      otherPeer.on("data", (data) => {
-        if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
-          filename = data.slice(4);
-          downloadInitiated = false;
-          receivedChunks = [];
-        } else if (typeof data === "string" && data.startsWith("size:")) {
-          totalChunks = parseInt(data.slice(5));
-          console.log(`Total chunks for ${filename}: ${totalChunks}`);
-          if (!isNaN(totalChunks) && totalChunks >= 0) {
-            receivedChunks = new Array(totalChunks);
-            updateTransferAnalytics(0, totalChunks * CHUNK_SIZE);
-            
-            const sizeMB = ((totalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
-            if (incomingFileInfo) incomingFileInfo.innerText = `${filename} (${sizeMB} MB)`;
-            
-            acceptRejectPrompt.classList.remove("hidden");
-            progressBar.classList.add("hidden");
-          }
-        } else if (data === "cancel_transfer") {
-          showToast("Sender cancelled the transfer", "info");
-          receivedChunks = [];
-          resetProgressState();
-        } else if (data === "all_done") {
-          resetProgressState();
-          showToast("All files transferred successfully!", "success");
-        } else if (data !== "done" && typeof data === "object") {
-          if (data.type === "chat") {
-            appendChatMessage("Peer", data.text);
-          } else {
-            receivedChunks[data.index] = data.data;
-            if (progressBar) progressBar.classList.remove("hidden");
-            if (progressBarInner) progressBarInner.style.width = `${(data.index / totalChunks) * 100}%`;
-            updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, totalChunks * CHUNK_SIZE);
-            otherPeer.send("next");
-          }
-        } else if (!downloadInitiated && data === "done") {
-          showToast(`Downloaded: ${filename}`, "success");
-          const file = new Blob(receivedChunks);
-          const url = URL.createObjectURL(file);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-          downloadInitiated = true;
-          otherPeer.send("file_received");
-        }
-      });
-
+      otherPeer.on("data", handleDataReceived);
       otherPeer.on("close", handlePeerClose);
     }
   }
