@@ -70,8 +70,22 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Already connected to a peer", "info");
       return;
     }
+    const connectBtn = document.getElementById("pinConnectBtn");
+    connectBtn.disabled = true;
+    connectBtn.textContent = "Connecting...";
+
+    const connectTimeout = setTimeout(() => {
+      showToast("Connection timed out. Peer may be offline.", "error");
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect";
+      if (otherPeer) { otherPeer.close(); otherPeer = null; }
+    }, 10000);
+
     otherPeer = peer.connect(pin);
     otherPeer.on("open", () => {
+      clearTimeout(connectTimeout);
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect";
       chatContainer.classList.remove("hidden");
       pinEntrySection.classList.add("hidden");
       shareLink.classList.add("hidden");
@@ -86,9 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer.on("data", handleDataReceived);
     otherPeer.on("close", handlePeerClose);
     otherPeer.on("error", (err) => {
+      clearTimeout(connectTimeout);
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect";
       showToast("Connection failed: " + err.message, "error");
     });
-    showToast("Connecting to PIN " + pin + "...", "info");
   });
 
   fileInput.addEventListener("change", handleFileSelection);
@@ -380,10 +396,10 @@ document.addEventListener("DOMContentLoaded", () => {
     resetProgressState();
     showToast("Peer disconnected", "error");
     otherPeer = null;
-    
-    // If we are receiver, maybe we should just alert.
-    // If sender, we can show share link again.
-    if (!new URLSearchParams(window.location.search).get("peer")) {
+    chatContainer.classList.add("hidden");
+    pinEntrySection.classList.remove("hidden");
+
+    if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
        shareLink.classList.remove("hidden");
     }
   }
