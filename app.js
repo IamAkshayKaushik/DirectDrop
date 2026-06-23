@@ -123,18 +123,21 @@ document.addEventListener("DOMContentLoaded", () => {
   function appendChatMessage(sender, text) {
     const wrapper = document.createElement("div");
     wrapper.className = "flex animate-fade-in mb-2";
+    const bubble = document.createElement("div");
+    bubble.textContent = text;
 
     if (sender === "You") {
       wrapper.classList.add("justify-end");
-      wrapper.innerHTML = `<div class="max-w-[75%] px-4 py-2 rounded-2xl rounded-br-sm bg-teal-500 text-white text-sm shadow">${text}</div>`;
+      bubble.className = "max-w-[75%] px-4 py-2 rounded-2xl rounded-br-sm bg-teal-500 text-white text-sm shadow";
     } else if (sender === "Peer") {
       wrapper.classList.add("justify-start");
-      wrapper.innerHTML = `<div class="max-w-[75%] px-4 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-slate-700 text-sm shadow-sm">${text}</div>`;
+      bubble.className = "max-w-[75%] px-4 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-slate-700 text-sm shadow-sm";
     } else {
       wrapper.classList.add("justify-center");
-      wrapper.innerHTML = `<div class="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">${text}</div>`;
+      bubble.className = "px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs";
     }
 
+    wrapper.appendChild(bubble);
     chatMessages.appendChild(wrapper);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
