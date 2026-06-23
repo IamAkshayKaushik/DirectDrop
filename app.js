@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const peer = initializePeerConnection();
+  let peer = initializePeerConnection();
 
   let fileQueue = [];
   let currentFileIndex = 0;
@@ -90,7 +90,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fileInput.addEventListener("change", handleFileSelection);
 
-  peer.on("connection", handlePeerConnection);
+  function setupPeerEvents() {
+    peer.on("connection", handlePeerConnection);
+    peer.on("open", handlePeerOpen);
+    peer.on("error", (err) => {
+      if (err.type === "unavailable-id") {
+        showToast("PIN collision — regenerating...", "info");
+        peer.destroy();
+        peer = initializePeerConnection();
+        setupPeerEvents();
+      } else {
+        showToast("Connection error: " + err.message, "error");
+      }
+    });
+  }
+
+  setupPeerEvents();
 
   chatForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -132,8 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
     otherPeer.send("reject");
     resetProgressState();
   });
-
-  peer.on("open", handlePeerOpen);
 
   function generatePin() {
     return Math.floor(100000 + Math.random() * 900000).toString();
