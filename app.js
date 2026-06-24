@@ -7,7 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentChunk = 0;
   let receivedChunks = [];
   let otherPeer;
-  const CHUNK_SIZE = 16 * 1024;
+  const CHUNK_SIZE = 64 * 1024; // ponytail: 64KB chunks; increase if WebRTC buffer allows
+  const PIPELINE_WINDOW = 8;   // ponytail: chunks in-flight at once; tune for speed vs memory
   const FILENAME_PREFIX = "bbb.";
   let downloadInitiated = false;
 
@@ -186,7 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
   
   acceptBtn.addEventListener("click", () => {
     acceptRejectPrompt.classList.add("hidden");
-    progressBar.classList.remove("hidden");
+    // Don't unconditionally show the progress bar here — the chunk handler
+    // will show it with role="receive" once first chunk arrives
     otherPeer.send("next");
   });
 
@@ -218,6 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentFileIndex < fileQueue.length) {
       fileData = fileQueue[currentFileIndex];
       currentChunk = 0;
+      chunksInFlight = 0; // reset pipeline window for new file
       renderFileQueue();
       return true;
     }
@@ -347,11 +350,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (incomingFileInfo) incomingFileInfo.innerText = `${incomingFilename} (${sizeMB} MB)`;
           const promptIcon = document.getElementById("incomingFileIcon");
           if (promptIcon) promptIcon.innerHTML = getFileIcon(incomingFilename, 'text-blue-600');
+          // Show accept prompt regardless of whether we're also sending
           acceptRejectPrompt.classList.remove("hidden");
-          progressBar.classList.add("hidden");
+          // Don't touch the send progress bar — it may be active for our own send
         }
       } else if (data === "next") {
-        sendNextFileChunk();
+        // Only the sender role handles "next" — ignore if we're not sending
+        if (isSending) sendNextFileChunk();
       } else if (data === "reject") {
         showToast("Receiver rejected the file", "error");
         moveToNextFile();
@@ -386,8 +391,13 @@ document.addEventListener("DOMContentLoaded", () => {
         otherPeer.send("file_received");
       } else if (typeof data === "object" && data.index !== undefined) {
         receivedChunks[data.index] = data.data;
-        if (progressBar) progressBar.classList.remove("hidden");
-        if (progressBarInner) progressBarInner.style.width = `${(data.index / incomingTotalChunks) * 100}%`;
+        // Show receive progress bar (separate visual from send bar via CSS class swap)
+        if (progressBar) {
+          progressBar.classList.remove("hidden");
+          progressBar.dataset.role = "receive";
+        }
+        const pct = Math.min(((data.index + 1) / incomingTotalChunks) * 100, 100);
+        if (progressBarInner) progressBarInner.style.width = `${pct}%`;
         updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, incomingTotalChunks * CHUNK_SIZE);
         otherPeer.send("next");
       }
@@ -407,21 +417,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Pipelined chunk sender: push up to PIPELINE_WINDOW chunks without waiting for
+  // individual acks. The receiver still sends "next" per chunk for flow control,
+  // but we have multiple in-flight so RTT doesn't bottleneck throughput.
+  // ponytail: window=8 × 64KB = 512KB in-flight; bump PIPELINE_WINDOW if link allows
+  let chunksInFlight = 0;
+
   async function sendNextFileChunk() {
     const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
-    if (currentChunk < totalChunks) {
-      const start = currentChunk * CHUNK_SIZE;
+
+    // Drain the window: push as many chunks as the window allows
+    while (chunksInFlight < PIPELINE_WINDOW && currentChunk < totalChunks) {
+      const idx = currentChunk;
+      const start = idx * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, fileData.size);
-      const chunkBlob = fileData.slice(start, end);
-      
-      const arrayBuffer = await chunkBlob.arrayBuffer();
-      
-      otherPeer.send({ index: currentChunk, data: arrayBuffer });
+      const arrayBuffer = await fileData.slice(start, end).arrayBuffer();
+
+      otherPeer.send({ index: idx, data: arrayBuffer });
       currentChunk++;
-      
+      chunksInFlight++;
+
+      if (progressBar) {
+        progressBar.dataset.role = "send";
+        progressBar.classList.remove("hidden");
+      }
       if (progressBarInner) progressBarInner.style.width = `${(currentChunk / totalChunks) * 100}%`;
       updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileData.size);
-    } else {
+    }
+
+    // Receiver "next" ack consumed one slot — decrement in-flight
+    if (chunksInFlight > 0) chunksInFlight--;
+
+    if (currentChunk >= totalChunks && chunksInFlight === 0) {
       otherPeer.send("done");
     }
   }
