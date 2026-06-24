@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressBarInner = document.getElementById("progressBarInner");
   const transferStatsEl = document.getElementById("transferStats");
   const transferEtaEl = document.getElementById("transferEta");
+  const transferFileNameEl = document.getElementById("transferFileName");
   const shareLink = document.getElementById("shareLink");
   const linkInput = document.getElementById("linkInput");
   
@@ -297,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     isSending = true;
     const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
     updateTransferAnalytics(0, fileData.size);
+    if (transferFileNameEl) transferFileNameEl.textContent = fileData.name;
     otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
     otherPeer.send(`size:${totalChunks.toString()}`);
   }
@@ -349,6 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
           updateTransferAnalytics(0, incomingTotalChunks * CHUNK_SIZE);
           const sizeMB = ((incomingTotalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
           if (incomingFileInfo) incomingFileInfo.innerText = `${incomingFilename} (${sizeMB} MB)`;
+          if (transferFileNameEl) transferFileNameEl.textContent = incomingFilename;
           const promptIcon = document.getElementById("incomingFileIcon");
           if (promptIcon) promptIcon.innerHTML = getFileIcon(incomingFilename, 'text-blue-600');
           // Show accept prompt regardless of whether we're also sending
@@ -486,6 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (progressBarInner) progressBarInner.style.width = "0%";
     if (progressBar) progressBar.classList.add("hidden");
     if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
+    if (transferFileNameEl) transferFileNameEl.textContent = "";
   }
 
   function handlePeerClose() {
