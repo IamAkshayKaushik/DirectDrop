@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     isReceiving = false;
     acceptRejectPrompt.classList.add("hidden");
     otherPeer.send("reject");
-    resetProgressState();
+    resetReceiveProgress();
   });
 
   function generatePin() {
@@ -221,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
       fileData = fileQueue[currentFileIndex];
       currentChunk = 0;
       chunksInFlight = 0; // reset pipeline window for new file
+      isProcessingQueue = false;
       renderFileQueue();
       return true;
     }
@@ -366,10 +367,10 @@ document.addEventListener("DOMContentLoaded", () => {
         isReceiving = false;
         showToast("Sender cancelled the transfer", "info");
         receivedChunks = [];
-        resetProgressState();
+        resetReceiveProgress();
       } else if (data === "all_done") {
         isReceiving = false;
-        resetProgressState();
+        resetReceiveProgress();
         showToast("All files transferred successfully!", "success");
         if (currentFileIndex < fileQueue.length) {
           if (prepareNextFile()) {
@@ -413,7 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       isSending = false;
       otherPeer.send("all_done");
-      resetProgressState();
+      resetSendProgress();
     }
   }
 
@@ -422,34 +423,41 @@ document.addEventListener("DOMContentLoaded", () => {
   // but we have multiple in-flight so RTT doesn't bottleneck throughput.
   // ponytail: window=8 × 64KB = 512KB in-flight; bump PIPELINE_WINDOW if link allows
   let chunksInFlight = 0;
+  let isProcessingQueue = false;
 
   async function sendNextFileChunk() {
-    const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
-
-    // Drain the window: push as many chunks as the window allows
-    while (chunksInFlight < PIPELINE_WINDOW && currentChunk < totalChunks) {
-      const idx = currentChunk;
-      const start = idx * CHUNK_SIZE;
-      const end = Math.min(start + CHUNK_SIZE, fileData.size);
-      const arrayBuffer = await fileData.slice(start, end).arrayBuffer();
-
-      otherPeer.send({ index: idx, data: arrayBuffer });
-      currentChunk++;
-      chunksInFlight++;
-
-      if (progressBar) {
-        progressBar.dataset.role = "send";
-        progressBar.classList.remove("hidden");
-      }
-      if (progressBarInner) progressBarInner.style.width = `${(currentChunk / totalChunks) * 100}%`;
-      updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileData.size);
-    }
-
-    // Receiver "next" ack consumed one slot — decrement in-flight
     if (chunksInFlight > 0) chunksInFlight--;
 
-    if (currentChunk >= totalChunks && chunksInFlight === 0) {
-      otherPeer.send("done");
+    if (isProcessingQueue) return;
+    isProcessingQueue = true;
+
+    try {
+      const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
+
+      while (chunksInFlight < PIPELINE_WINDOW && currentChunk < totalChunks) {
+        const idx = currentChunk;
+        currentChunk++;
+        chunksInFlight++;
+
+        const start = idx * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, fileData.size);
+        const arrayBuffer = await fileData.slice(start, end).arrayBuffer();
+
+        otherPeer.send({ index: idx, data: arrayBuffer });
+
+        if (progressBar) {
+          progressBar.dataset.role = "send";
+          progressBar.classList.remove("hidden");
+        }
+        if (progressBarInner) progressBarInner.style.width = `${(currentChunk / totalChunks) * 100}%`;
+        updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileData.size);
+      }
+
+      if (currentChunk >= totalChunks && chunksInFlight === 0) {
+        otherPeer.send("done");
+      }
+    } finally {
+      isProcessingQueue = false;
     }
   }
 
@@ -459,8 +467,22 @@ document.addEventListener("DOMContentLoaded", () => {
     resetProgressState();
   }
 
+  function resetSendProgress() {
+    currentChunk = 0;
+    chunksInFlight = 0;
+    isProcessingQueue = false;
+    if (!isReceiving && progressBar) progressBar.classList.add("hidden");
+  }
+
+  function resetReceiveProgress() {
+    if (!isSending && progressBar) progressBar.classList.add("hidden");
+    if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
+  }
+
   function resetProgressState() {
     currentChunk = 0;
+    chunksInFlight = 0;
+    isProcessingQueue = false;
     if (progressBarInner) progressBarInner.style.width = "0%";
     if (progressBar) progressBar.classList.add("hidden");
     if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
@@ -575,7 +597,7 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer.send("cancel_transfer");
       showToast(`Cancelled: ${fileQueue[index].name}`, "info");
       fileQueue.splice(index, 1);
-      resetProgressState();
+      resetSendProgress();
       if (prepareNextFile()) {
         sendFileMetadata();
       }
