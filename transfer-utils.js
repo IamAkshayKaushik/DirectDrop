@@ -14,11 +14,16 @@ function calculateReceivePercent(receivedBytes, totalBytes) {
   return Math.min((receivedBytes / totalBytes) * 100, 100);
 }
 
+function shouldShowProgressBar(isSending, isReceiving) {
+  return isSending || isReceiving;
+}
+
 const api = {
   CHUNK_SIZE,
   formatFileSize,
   calculateReceivedBytes,
   calculateReceivePercent,
+  shouldShowProgressBar,
 };
 
 if (typeof module !== "undefined" && module.exports) {

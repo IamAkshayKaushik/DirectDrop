@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formatFileSize,
     calculateReceivedBytes,
     calculateReceivePercent,
+    shouldShowProgressBar,
   } = DirectDropTransfer;
 
   let peer = initializePeerConnection();
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let isSending = false;
   let isReceiving = false;
+  let incomingFilePending = false;
 
   let remotePeerId = null;
   let userInitiatedClose = false;
@@ -192,8 +194,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   acceptBtn.addEventListener("click", () => {
+    if (!incomingFilePending) return;
+    incomingFilePending = false;
+    isReceiving = true;
     acceptRejectPrompt.classList.add("hidden");
     if (cancelReceiveBtn) cancelReceiveBtn.classList.remove("hidden");
+    const totalBytes = incomingTotalBytes || incomingTotalChunks * CHUNK_SIZE;
+    if (progressBar) {
+      progressBar.classList.remove("hidden");
+      progressBar.dataset.role = "receive";
+      if (progressBarInner) progressBarInner.style.width = "0%";
+    }
+    if (transferFileNameEl) transferFileNameEl.textContent = incomingFilename;
+    updateTransferAnalytics(0, totalBytes);
     otherPeer.send("next");
   });
 
@@ -206,9 +219,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function abortReceive(isMidTransfer) {
-    if (!isReceiving) return;
+    if (!isReceiving && !incomingFilePending) return;
     isReceiving = false;
-    downloadInitiated = true; // ponytail: block stale "done" after cancel
+    incomingFilePending = false;
+    incomingFilename = "";
+    incomingTotalBytes = 0;
+    incomingTotalChunks = 0;
+    downloadInitiated = true;
     receivedChunks = [];
     acceptRejectPrompt.classList.add("hidden");
     if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
@@ -228,8 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
       config: {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:freestun.net:3479" },
-          { urls: "stun:freestun.net:5350" }
         ],
       },
     });
@@ -367,9 +382,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof data === "object" && data.type === "chat") {
         appendChatMessage("Peer", data.text);
       } else if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
-        isReceiving = true;
+        incomingFilePending = true;
         incomingFilename = data.slice(FILENAME_PREFIX.length);
         incomingTotalBytes = 0;
+        incomingTotalChunks = 0;
         downloadInitiated = false;
         receivedChunks = [];
       } else if (typeof data === "string" && data.startsWith("bytes:")) {
@@ -385,11 +401,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isNaN(incomingTotalChunks) && incomingTotalChunks >= 0) {
           const totalBytes = incomingTotalBytes || incomingTotalChunks * CHUNK_SIZE;
           receivedChunks = new Array(incomingTotalChunks);
-          updateTransferAnalytics(0, totalBytes);
           if (incomingFileInfo) {
             incomingFileInfo.innerText = `${incomingFilename} (${formatFileSize(totalBytes)})`;
           }
-          if (transferFileNameEl) transferFileNameEl.textContent = incomingFilename;
           const promptIcon = document.getElementById("incomingFileIcon");
           if (promptIcon) promptIcon.innerHTML = getFileIcon(incomingFilename, 'text-blue-600');
           acceptRejectPrompt.classList.remove("hidden");
@@ -404,6 +418,10 @@ document.addEventListener("DOMContentLoaded", () => {
         moveToNextFile();
       } else if (data === "cancel_transfer") {
         isReceiving = false;
+        incomingFilePending = false;
+        incomingFilename = "";
+        incomingTotalBytes = 0;
+        incomingTotalChunks = 0;
         downloadInitiated = true;
         showToast("Sender cancelled the transfer", "info");
         receivedChunks = [];
@@ -518,14 +536,24 @@ document.addEventListener("DOMContentLoaded", () => {
     currentChunk = 0;
     chunksInFlight = 0;
     isProcessingQueue = false;
-    if (!isReceiving && progressBar) progressBar.classList.add("hidden");
+    if (!shouldShowProgressBar(isSending, isReceiving) && progressBar) {
+      progressBar.classList.add("hidden");
+    }
   }
 
   function resetReceiveProgress() {
-    if (!isSending && progressBar) progressBar.classList.add("hidden");
+    if (!shouldShowProgressBar(isSending, isReceiving) && progressBar) {
+      progressBar.classList.add("hidden");
+    }
     if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
     if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
-    if (transferSizeEl) transferSizeEl.innerText = "";
+    if (!isSending) {
+      if (transferFileNameEl) transferFileNameEl.textContent = "";
+      if (transferStatsEl) transferStatsEl.innerText = "Calculating speed...";
+      if (transferEtaEl) transferEtaEl.innerText = "ETA: --";
+      if (transferSizeEl) transferSizeEl.innerText = "";
+      if (progressBarInner) progressBarInner.style.width = "0%";
+    }
   }
 
   function resetProgressState() {
@@ -543,6 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function handlePeerClose() {
     isSending = false;
     isReceiving = false;
+    incomingFilePending = false;
     resetProgressState();
     otherPeer = null;
 
