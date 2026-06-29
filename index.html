@@ -152,7 +152,12 @@
             </div>
             <div class="flex justify-between text-xs text-slate-500 mt-1">
                 <span id="transferStats" class="font-medium">Calculating speed...</span>
+                <span id="transferSize" class="text-slate-400"></span>
             </div>
+            <button id="cancelReceiveBtn" type="button"
+                class="hidden mt-3 w-full bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 text-sm font-semibold py-2 px-4 rounded-xl transition-all">
+                Cancel download
+            </button>
         </div>
 
         <!-- Receiver Accept/Reject Prompt -->
@@ -220,6 +225,7 @@
         }
     </script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="transfer-utils.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

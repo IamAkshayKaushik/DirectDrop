@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const {
+    CHUNK_SIZE,
+    formatFileSize,
+    calculateReceivedBytes,
+    calculateReceivePercent,
+  } = DirectDropTransfer;
+
   let peer = initializePeerConnection();
 
   let fileQueue = [];
@@ -7,7 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentChunk = 0;
   let receivedChunks = [];
   let otherPeer;
-  const CHUNK_SIZE = 64 * 1024; // ponytail: 64KB chunks; increase if WebRTC buffer allows
   const PIPELINE_WINDOW = 8;   // ponytail: chunks in-flight at once; tune for speed vs memory
   const FILENAME_PREFIX = "bbb.";
   let downloadInitiated = false;
@@ -21,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let reconnectTimer = null;
 
   let incomingTotalChunks = 0;
+  let incomingTotalBytes = 0;
   let incomingFilename = "";
 
   let transferStartTime = 0;
@@ -32,7 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressBarInner = document.getElementById("progressBarInner");
   const transferStatsEl = document.getElementById("transferStats");
   const transferEtaEl = document.getElementById("transferEta");
+  const transferSizeEl = document.getElementById("transferSize");
   const transferFileNameEl = document.getElementById("transferFileName");
+  const cancelReceiveBtn = document.getElementById("cancelReceiveBtn");
   const shareLink = document.getElementById("shareLink");
   const linkInput = document.getElementById("linkInput");
   
@@ -112,11 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
       pinEntrySection.classList.add("hidden");
       shareLink.classList.add("hidden");
       showToast("Connected to peer!", "success");
-      if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
-        sendFileMetadata();
-        progressBar.classList.remove("hidden");
-        progressBarInner.style.width = "0%";
-      }
+      tryStartSending();
       renderFileQueue();
     });
     otherPeer.on("data", handleDataReceived);
@@ -188,17 +193,30 @@ document.addEventListener("DOMContentLoaded", () => {
   
   acceptBtn.addEventListener("click", () => {
     acceptRejectPrompt.classList.add("hidden");
-    // Don't unconditionally show the progress bar here — the chunk handler
-    // will show it with role="receive" once first chunk arrives
+    if (cancelReceiveBtn) cancelReceiveBtn.classList.remove("hidden");
     otherPeer.send("next");
   });
 
   rejectBtn.addEventListener("click", () => {
+    abortReceive(false);
+  });
+
+  if (cancelReceiveBtn) {
+    cancelReceiveBtn.addEventListener("click", () => abortReceive(true));
+  }
+
+  function abortReceive(isMidTransfer) {
+    if (!isReceiving) return;
     isReceiving = false;
+    downloadInitiated = true; // ponytail: block stale "done" after cancel
+    receivedChunks = [];
     acceptRejectPrompt.classList.add("hidden");
+    if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
     otherPeer.send("reject");
     resetReceiveProgress();
-  });
+    if (isMidTransfer) showToast("Download cancelled", "info");
+    tryStartSending();
+  }
 
   function generatePin() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -230,20 +248,25 @@ document.addEventListener("DOMContentLoaded", () => {
     return false;
   }
 
+  function tryStartSending() {
+    if (!otherPeer || !otherPeer.open || isSending || isReceiving) return false;
+    if (currentFileIndex >= fileQueue.length) return false;
+    if (!prepareNextFile()) return false;
+    sendFileMetadata();
+    if (progressBar) {
+      progressBar.classList.remove("hidden");
+      progressBarInner.style.width = "0%";
+    }
+    return true;
+  }
+
   function handleFileSelection(e) {
     const newFiles = Array.from(e.target.files);
     if (newFiles.length === 0) return;
 
     if (otherPeer && otherPeer.open) {
-      const wasIdle = currentFileIndex >= fileQueue.length;
       fileQueue.push(...newFiles);
-      if (wasIdle && !isReceiving) {
-        if (prepareNextFile()) {
-          sendFileMetadata();
-        }
-      } else {
-        renderFileQueue();
-      }
+      if (!tryStartSending()) renderFileQueue();
     } else {
       fileQueue.push(...newFiles);
       if (currentFileIndex === 0 && fileQueue.length === newFiles.length) {
@@ -283,11 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
       pinEntrySection.classList.add("hidden");
       showToast("Peer connected!", "success");
 
-      if (fileQueue.length > 0 && currentFileIndex < fileQueue.length) {
-        sendFileMetadata();
-        progressBar.classList.remove("hidden");
-        progressBarInner.style.width = "0%";
-      }
+      tryStartSending();
       renderFileQueue();
     });
     otherPeer.on("data", handleDataReceived);
@@ -300,7 +319,9 @@ document.addEventListener("DOMContentLoaded", () => {
     updateTransferAnalytics(0, fileData.size);
     if (transferFileNameEl) transferFileNameEl.textContent = fileData.name;
     otherPeer.send(`${FILENAME_PREFIX + fileData.name}`);
+    otherPeer.send(`bytes:${fileData.size}`);
     otherPeer.send(`size:${totalChunks.toString()}`);
+    renderFileQueue();
   }
 
   function updateTransferAnalytics(currentBytes, totalBytes) {
@@ -310,6 +331,9 @@ document.addEventListener("DOMContentLoaded", () => {
       lastSpeedUpdateTime = now;
       if (transferStatsEl) transferStatsEl.innerText = "Calculating speed...";
       if (transferEtaEl) transferEtaEl.innerText = "ETA: --";
+      if (transferSizeEl && totalBytes > 0) {
+        transferSizeEl.innerText = `0 B / ${formatFileSize(totalBytes)}`;
+      }
       return;
     }
     
@@ -331,6 +355,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (transferStatsEl) transferStatsEl.innerText = `${speedMBps} MB/s`;
     if (transferEtaEl) transferEtaEl.innerText = `ETA: ${etaString}`;
+    if (transferSizeEl && totalBytes > 0) {
+      transferSizeEl.innerText = `${formatFileSize(currentBytes)} / ${formatFileSize(totalBytes)}`;
+    }
     
     lastSpeedUpdateTime = now;
   }
@@ -342,21 +369,30 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (typeof data === "string" && data.startsWith(FILENAME_PREFIX)) {
         isReceiving = true;
         incomingFilename = data.slice(FILENAME_PREFIX.length);
+        incomingTotalBytes = 0;
         downloadInitiated = false;
         receivedChunks = [];
+      } else if (typeof data === "string" && data.startsWith("bytes:")) {
+        const bytes = parseInt(data.slice(6));
+        if (!isNaN(bytes) && bytes >= 0) {
+          incomingTotalBytes = bytes;
+          if (incomingFilename && incomingFileInfo) {
+            incomingFileInfo.innerText = `${incomingFilename} (${formatFileSize(bytes)})`;
+          }
+        }
       } else if (typeof data === "string" && data.startsWith("size:")) {
         incomingTotalChunks = parseInt(data.slice(5));
         if (!isNaN(incomingTotalChunks) && incomingTotalChunks >= 0) {
+          const totalBytes = incomingTotalBytes || incomingTotalChunks * CHUNK_SIZE;
           receivedChunks = new Array(incomingTotalChunks);
-          updateTransferAnalytics(0, incomingTotalChunks * CHUNK_SIZE);
-          const sizeMB = ((incomingTotalChunks * CHUNK_SIZE) / (1024 * 1024)).toFixed(2);
-          if (incomingFileInfo) incomingFileInfo.innerText = `${incomingFilename} (${sizeMB} MB)`;
+          updateTransferAnalytics(0, totalBytes);
+          if (incomingFileInfo) {
+            incomingFileInfo.innerText = `${incomingFilename} (${formatFileSize(totalBytes)})`;
+          }
           if (transferFileNameEl) transferFileNameEl.textContent = incomingFilename;
           const promptIcon = document.getElementById("incomingFileIcon");
           if (promptIcon) promptIcon.innerHTML = getFileIcon(incomingFilename, 'text-blue-600');
-          // Show accept prompt regardless of whether we're also sending
           acceptRejectPrompt.classList.remove("hidden");
-          // Don't touch the send progress bar — it may be active for our own send
         }
       } else if (data === "next") {
         // Only the sender role handles "next" — ignore if we're not sending
@@ -368,21 +404,17 @@ document.addEventListener("DOMContentLoaded", () => {
         moveToNextFile();
       } else if (data === "cancel_transfer") {
         isReceiving = false;
+        downloadInitiated = true;
         showToast("Sender cancelled the transfer", "info");
         receivedChunks = [];
+        if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
         resetReceiveProgress();
+        tryStartSending();
       } else if (data === "all_done") {
-        isReceiving = false;
         resetReceiveProgress();
-        showToast("All files transferred successfully!", "success");
-        if (currentFileIndex < fileQueue.length) {
-          if (prepareNextFile()) {
-            sendFileMetadata();
-            progressBar.classList.remove("hidden");
-            progressBarInner.style.width = "0%";
-          }
-        }
-      } else if (data === "done" && !downloadInitiated) {
+        showToast("Peer finished sending", "success");
+        tryStartSending();
+      } else if (data === "done" && isReceiving && !downloadInitiated) {
         showToast(`Downloaded: ${incomingFilename}`, "success");
         const file = new Blob(receivedChunks);
         const url = URL.createObjectURL(file);
@@ -392,17 +424,28 @@ document.addEventListener("DOMContentLoaded", () => {
         a.click();
         URL.revokeObjectURL(url);
         downloadInitiated = true;
+        isReceiving = false;
+        if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
+        resetReceiveProgress();
         otherPeer.send("file_received");
+        tryStartSending();
       } else if (typeof data === "object" && data.index !== undefined) {
+        if (!isReceiving) return;
         receivedChunks[data.index] = data.data;
-        // Show receive progress bar (separate visual from send bar via CSS class swap)
         if (progressBar) {
           progressBar.classList.remove("hidden");
           progressBar.dataset.role = "receive";
         }
-        const pct = Math.min(((data.index + 1) / incomingTotalChunks) * 100, 100);
+        const totalBytes = incomingTotalBytes || incomingTotalChunks * CHUNK_SIZE;
+        const receivedBytes = calculateReceivedBytes(
+          data.index,
+          data.data.byteLength,
+          CHUNK_SIZE,
+          totalBytes
+        );
+        const pct = calculateReceivePercent(receivedBytes, totalBytes);
         if (progressBarInner) progressBarInner.style.width = `${pct}%`;
-        updateTransferAnalytics((data.index + 1) * CHUNK_SIZE, incomingTotalChunks * CHUNK_SIZE);
+        updateTransferAnalytics(receivedBytes, totalBytes);
         otherPeer.send("next");
       }
     } catch (error) {
@@ -429,6 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let isProcessingQueue = false;
 
   async function sendNextFileChunk() {
+    if (!isSending) return;
     if (chunksInFlight > 0) chunksInFlight--;
 
     if (isProcessingQueue) return;
@@ -437,7 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const totalChunks = Math.ceil(fileData.size / CHUNK_SIZE);
 
-      while (chunksInFlight < PIPELINE_WINDOW && currentChunk < totalChunks) {
+      while (isSending && chunksInFlight < PIPELINE_WINDOW && currentChunk < totalChunks) {
         const idx = currentChunk;
         currentChunk++;
         chunksInFlight++;
@@ -456,7 +500,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateTransferAnalytics(currentChunk * CHUNK_SIZE, fileData.size);
       }
 
-      if (currentChunk >= totalChunks && chunksInFlight === 0) {
+      if (isSending && currentChunk >= totalChunks && chunksInFlight === 0) {
         otherPeer.send("done");
       }
     } finally {
@@ -480,6 +524,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetReceiveProgress() {
     if (!isSending && progressBar) progressBar.classList.add("hidden");
     if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
+    if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
+    if (transferSizeEl) transferSizeEl.innerText = "";
   }
 
   function resetProgressState() {
@@ -489,7 +535,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (progressBarInner) progressBarInner.style.width = "0%";
     if (progressBar) progressBar.classList.add("hidden");
     if (acceptRejectPrompt) acceptRejectPrompt.classList.add("hidden");
+    if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
     if (transferFileNameEl) transferFileNameEl.textContent = "";
+    if (transferSizeEl) transferSizeEl.innerText = "";
   }
 
   function handlePeerClose() {
@@ -526,6 +574,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (connectionHelp) connectionHelp.classList.add("hidden");
           pinEntrySection.classList.add("hidden");
           shareLink.classList.add("hidden");
+          tryStartSending();
           renderFileQueue();
         });
         otherPeer.on("data", handleDataReceived);
@@ -582,6 +631,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chatContainer.classList.remove("hidden");
         if (connectionHelp) connectionHelp.classList.add("hidden");
         showToast("Connected to peer!", "success");
+        tryStartSending();
         renderFileQueue();
       });
       otherPeer.on("data", handleDataReceived);
@@ -598,13 +648,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function cancelFileAtIndex(index) {
     const isCurrent = index === currentFileIndex;
     if (isCurrent && otherPeer && otherPeer.open && isSending) {
+      isSending = false;
       otherPeer.send("cancel_transfer");
       showToast(`Cancelled: ${fileQueue[index].name}`, "info");
       fileQueue.splice(index, 1);
       resetSendProgress();
-      if (prepareNextFile()) {
-        sendFileMetadata();
-      }
+      tryStartSending();
     } else if (index > currentFileIndex) {
       showToast(`Removed: ${fileQueue[index].name}`, "info");
       fileQueue.splice(index, 1);
