@@ -251,6 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
           { urls: "stun:stun4.l.google.com:19302" },
           { urls: "stun:stun.services.mozilla.com:3478" },
           { urls: "stun:stunserver.stunprotocol.org:3478" },
+          { urls: "stun.cloudflare.com:3478" },
         ],
       },
     });
