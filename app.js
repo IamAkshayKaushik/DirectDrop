@@ -243,15 +243,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const pin = generatePin();
     return new Peer(pin, {
       config: {
+        // STUN only discovers public IPs — it cannot relay. When both peers sit
+        // behind the same NAT (no hairpinning) or symmetric/CG-NAT, a TURN relay
+        // is REQUIRED or the datachannel will never connect.
+        // NOTE: stun.services.mozilla.com, stunserver.stunprotocol.org, and
+        // PeerJS's default turn.peerjs.com are all dead (DNS gone) — removed.
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          { urls: "stun:stun3.l.google.com:19302" },
-          { urls: "stun:stun4.l.google.com:19302" },
-          { urls: "stun:stun.services.mozilla.com:3478" },
-          { urls: "stun:stunserver.stunprotocol.org:3478" },
-          // { urls: "stun.cloudflare.com:3478" },
+          { urls: "stun:stun.cloudflare.com:3478" },
+          // TODO: add a TURN server here, e.g. Metered/Open Relay (free 20GB/mo,
+          // needs API key) or Cloudflare Realtime TURN. Example shape:
+          // { urls: "turn:your.turn.host:443", username: "...", credential: "..." },
         ],
       },
     });
