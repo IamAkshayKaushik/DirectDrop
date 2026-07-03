@@ -105,6 +105,10 @@
             <div id="qrContainer" class="hidden mt-4 flex justify-center p-2 bg-white rounded-xl border border-slate-100">
                 <div id="qrcode"></div>
             </div>
+            <div class="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                <span class="inline-block w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                Waiting for someone to connect…
+            </div>
         </div>
 
         <!-- Connecting spinner (shown during URL-based auto-connect) -->
@@ -149,6 +153,12 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- iOS Safari manual download fallback -->
+        <div id="manualDownloadContainer" class="hidden mb-6 p-4 bg-teal-50 border border-teal-200 rounded-2xl">
+            <p class="text-xs font-bold text-teal-700 uppercase tracking-wider mb-2">File Ready</p>
+            <a id="manualDownloadLink" href="#" class="flex items-center gap-2 text-sm font-semibold text-teal-700 underline underline-offset-2">Save file</a>
         </div>
 
         <!-- Transfer Progress -->

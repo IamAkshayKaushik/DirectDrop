@@ -74,9 +74,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("copyLinkBtn").addEventListener("click", () => {
-    navigator.clipboard.writeText(linkInput.value)
-      .then(() => showToast("Link copied!", "success"))
-      .catch(() => showToast("Copy failed", "error"));
+    const url = linkInput.value;
+    if (navigator.share) {
+      navigator.share({ title: "DirectDrop", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url)
+        .then(() => showToast("Link copied!", "success"))
+        .catch(() => showToast("Copy failed", "error"));
+    }
   });
 
   function showToast(message, type = 'info') {
@@ -446,8 +451,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const a = document.createElement("a");
         a.href = url;
         a.download = incomingFilename;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        // iOS Safari ignores a.click() — show persistent link as fallback
+        const manualLink = document.getElementById("manualDownloadLink");
+        if (manualLink) {
+          manualLink.href = url;
+          manualLink.download = incomingFilename;
+          manualLink.textContent = `Save ${incomingFilename}`;
+          document.getElementById("manualDownloadContainer").classList.remove("hidden");
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
         downloadInitiated = true;
         isReceiving = false;
         if (cancelReceiveBtn) cancelReceiveBtn.classList.add("hidden");
