@@ -1,0 +1,10 @@
+{
+  "name": "DirectDrop",
+  "short_name": "DirectDrop",
+  "description": "Fast, secure peer-to-peer file transfer. No uploads, no registration.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#14b8a6",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <title>DirectDrop — Fast, Secure P2P File Transfer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="manifest" href="/manifest.json">
 </head>
 
 <body class="bg-gradient-to-br from-slate-50 to-slate-200 min-h-screen flex items-center justify-center p-2 sm:p-4 font-sans text-slate-800">
@@ -95,7 +96,8 @@
 
         <!-- Connection / Share Link Info -->
         <div id="shareLink" class="mb-6 hidden bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Share this code to connect</p>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Share this code to connect</p>
+            <p id="shareLinkPin" class="text-3xl font-mono font-extrabold text-teal-600 tracking-[0.35em] mb-3">------</p>
             <div class="flex items-center space-x-2">
                 <input type="text" id="linkInput" class="flex-1 bg-slate-50 border border-slate-200 text-slate-800 text-lg font-mono font-medium rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500/50" readonly>
                 <button id="copyLinkBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-xl transition-colors" title="Copy to clipboard">
@@ -183,6 +185,12 @@
             </button>
         </div>
 
+        <!-- Transfer History -->
+        <div id="transferHistory" class="hidden mb-6">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Transferred</p>
+            <ul id="transferLog" class="flex flex-col gap-1.5"></ul>
+        </div>
+
         <!-- Receiver Accept/Reject Prompt -->
         <div id="acceptRejectPrompt" class="mb-6 hidden p-5 bg-white border border-teal-100 rounded-2xl shadow-md transform transition-all">
             <div class="flex items-center space-x-3 mb-3">
@@ -200,8 +208,12 @@
             </div>
         </div>
 
+        <!-- Connected badge: shown whenever chatContainer is visible -->
+        <div id="connectedBadge" class="hidden mb-3 flex items-center gap-1.5 text-sm font-semibold text-green-600">
+            <span class="w-2 h-2 rounded-full bg-green-500"></span>Connected
+        </div>
         <!-- Chat Container -->
-        <div id="chatContainer" class="hidden w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[300px]">
+        <div id="chatContainer" class="hidden w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[80px] sm:min-h-[200px]">
             <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex items-center space-x-2">
                 <div class="w-2 h-2 rounded-full bg-green-500"></div>
                 <h3 class="text-sm font-bold text-slate-700">Live Chat</h3>
@@ -212,7 +224,7 @@
             </div>
             <form id="chatForm" class="p-3 border-t border-slate-100 bg-slate-50 flex space-x-2">
                 <input type="text" id="chatInput" class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all" placeholder="Type a message..." autocomplete="off">
-                <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-teal-500/20">Send</button>
+                <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-teal-500/20">Send</button>
             </form>
         </div>
 

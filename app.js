@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const rejectBtn = document.getElementById("rejectBtn");
 
   const chatContainer = document.getElementById("chatContainer");
+  const connectedBadge = document.getElementById("connectedBadge");
   const chatMessages = document.getElementById("chatMessages");
   const chatForm = document.getElementById("chatForm");
   const chatInput = document.getElementById("chatInput");
@@ -64,6 +65,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const myPinCode = document.getElementById("myPinCode");
   const pinEntrySection = document.getElementById("pinEntrySection");
   const connectingSpinner = document.getElementById("connectingSpinner");
+
+  if (navigator.maxTouchPoints > 0) {
+    const pickLabel = document.querySelector("#dropZone p.font-semibold");
+    if (pickLabel) pickLabel.textContent = "Tap to select files";
+  }
 
   document.getElementById("myPinDisplay").addEventListener("click", () => {
     if (peer && peer.id) {
@@ -131,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect";
       chatContainer.classList.remove("hidden");
+      if (connectedBadge) connectedBadge.classList.remove("hidden");
       if (connectionHelp) connectionHelp.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
       shareLink.classList.add("hidden");
@@ -328,6 +335,7 @@ document.addEventListener("DOMContentLoaded", () => {
       remotePeerId = conn.peer;
       reconnectAttempt = 0;
       chatContainer.classList.remove("hidden");
+      if (connectedBadge) connectedBadge.classList.remove("hidden");
       if (connectionHelp) connectionHelp.classList.add("hidden");
       shareLink.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
@@ -427,6 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Receiver rejected the file", "error");
         moveToNextFile();
       } else if (data === "file_received") {
+        if (fileData) appendTransferLog(fileData.name, fileData.size);
         moveToNextFile();
       } else if (data === "cancel_transfer") {
         isReceiving = false;
@@ -446,6 +455,7 @@ document.addEventListener("DOMContentLoaded", () => {
         tryStartSending();
       } else if (data === "done" && isReceiving && !downloadInitiated) {
         showToast(`Downloaded: ${incomingFilename}`, "success");
+        appendTransferLog(incomingFilename, incomingTotalBytes);
         const file = new Blob(receivedChunks);
         const url = URL.createObjectURL(file);
         const a = document.createElement("a");
@@ -605,6 +615,7 @@ document.addEventListener("DOMContentLoaded", () => {
       remotePeerId = null;
       showToast("Disconnected", "info");
       chatContainer.classList.add("hidden");
+      if (connectedBadge) connectedBadge.classList.add("hidden");
       pinEntrySection.classList.remove("hidden");
       if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
         shareLink.classList.remove("hidden");
@@ -625,6 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
           reconnectAttempt = 0;
           showToast("Reconnected!", "success");
           chatContainer.classList.remove("hidden");
+          if (connectedBadge) connectedBadge.classList.remove("hidden");
           if (connectionHelp) connectionHelp.classList.add("hidden");
           pinEntrySection.classList.add("hidden");
           shareLink.classList.add("hidden");
@@ -642,6 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
       remotePeerId = null;
       showToast("Connection lost. Enter PIN to reconnect.", "error");
       chatContainer.classList.add("hidden");
+      if (connectedBadge) connectedBadge.classList.add("hidden");
       pinEntrySection.classList.remove("hidden");
       if (!new URLSearchParams(window.location.search).get("peer") && fileQueue.length > 0) {
         shareLink.classList.remove("hidden");
@@ -674,6 +687,7 @@ document.addEventListener("DOMContentLoaded", () => {
         remotePeerId = peerIdParam;
         reconnectAttempt = 0;
         chatContainer.classList.remove("hidden");
+        if (connectedBadge) connectedBadge.classList.remove("hidden");
         if (connectingSpinner) connectingSpinner.classList.add("hidden");
         showToast("Connected to peer!", "success");
         tryStartSending();
@@ -692,9 +706,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       const link = `${window.location.origin}${window.location.pathname}?peer=${id}`;
       linkInput.value = link;
+      const shareLinkPin = document.getElementById("shareLinkPin");
+      if (shareLinkPin) shareLinkPin.textContent = id;
       shareLink.classList.remove("hidden");
       const qrContainer = document.getElementById("qrContainer");
-      qrContainer.classList.remove("hidden");
+      if (window.matchMedia("(min-width:640px)").matches) qrContainer.classList.remove("hidden");
       document.getElementById("qrcode").innerHTML = "";
       new QRCode(document.getElementById("qrcode"), {
         text: link, width: 200, height: 200,
@@ -717,6 +733,17 @@ document.addEventListener("DOMContentLoaded", () => {
       fileQueue.splice(index, 1);
       renderFileQueue();
     }
+  }
+
+  function appendTransferLog(name, bytes) {
+    const log = document.getElementById("transferLog");
+    const history = document.getElementById("transferHistory");
+    if (!log || !history) return;
+    history.classList.remove("hidden");
+    const li = document.createElement("li");
+    li.className = "flex items-center gap-2 text-xs bg-slate-50 rounded-lg px-3 py-2";
+    li.innerHTML = `<span class="font-medium truncate text-slate-700">${name}</span><span class="ml-auto text-slate-400 shrink-0">${formatFileSize(bytes)}</span>`;
+    log.appendChild(li);
   }
 
   function getFileIcon(filename, colorClass) {
