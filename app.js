@@ -63,13 +63,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const pinInput = document.getElementById("pinInput");
   const myPinCode = document.getElementById("myPinCode");
   const pinEntrySection = document.getElementById("pinEntrySection");
+  const connectingSpinner = document.getElementById("connectingSpinner");
 
   document.getElementById("myPinDisplay").addEventListener("click", () => {
     if (peer && peer.id) {
-      navigator.clipboard.writeText(peer.id).then(() => {
-        showToast("PIN copied!", "success");
-      });
+      navigator.clipboard.writeText(peer.id)
+        .then(() => showToast("PIN copied!", "success"))
+        .catch(() => showToast("Copy failed", "error"));
     }
+  });
+
+  document.getElementById("copyLinkBtn").addEventListener("click", () => {
+    navigator.clipboard.writeText(linkInput.value)
+      .then(() => showToast("Link copied!", "success"))
+      .catch(() => showToast("Copy failed", "error"));
   });
 
   function showToast(message, type = 'info') {
@@ -132,7 +139,8 @@ document.addEventListener("DOMContentLoaded", () => {
       clearTimeout(connectTimeout);
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect";
-      showToast("Connection failed: " + err.message, "error");
+      const msg = err.type === "peer-unavailable" ? "No peer found — check the PIN and try again." : "Connection failed: " + err.message;
+      showToast(msg, "error");
     });
   });
 
@@ -155,6 +163,11 @@ document.addEventListener("DOMContentLoaded", () => {
         setupPeerEvents();
       } else {
         showToast("Connection error: " + err.message, "error");
+        if (connectingSpinner && !connectingSpinner.classList.contains("hidden")) {
+          connectingSpinner.classList.add("hidden");
+          if (connectionHelp) connectionHelp.classList.remove("hidden");
+          pinEntrySection.classList.remove("hidden");
+        }
       }
     });
   }
@@ -298,21 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         renderFileQueue();
       }
-      shareLink.classList.remove("hidden");
-
-      const link = `${window.location.href.split('?')[0]}?peer=${peer.id}`;
-      linkInput.value = link;
-
-      const qrContainer = document.getElementById("qrContainer");
-      qrContainer.classList.remove("hidden");
-      document.getElementById("qrcode").innerHTML = "";
-      new QRCode(document.getElementById("qrcode"), {
-        text: link,
-        width: 200,
-        height: 200,
-        colorDark: "#0f172a", // slate-900
-        colorLight: "#ffffff",
-      });
     }
     
     // Reset file input so same file can be selected again if needed
@@ -538,6 +536,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function handleDownloadError(error) {
     console.error("An error occurred during the file transfer: ", error);
     showToast("File transfer error", "error");
+    isSending = false;
+    isReceiving = false;
+    incomingFilePending = false;
     resetProgressState();
   }
 
@@ -640,34 +641,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (peerIdParam) {
       shareLink.classList.add("hidden");
       pinEntrySection.classList.add("hidden");
-
-      if (connectionHelp) {
-        connectionHelp.innerHTML = `
-          <div class="flex items-center justify-center space-x-3 py-2">
-            <svg class="animate-spin h-5 w-5 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <span class="text-sm font-medium text-slate-600">Connecting to peer...</span>
-          </div>`;
-      }
-
-      history.replaceState(null, "", window.location.pathname);
+      if (connectionHelp) connectionHelp.classList.add("hidden");
+      if (connectingSpinner) connectingSpinner.classList.remove("hidden");
 
       const connectTimeout = setTimeout(() => {
         showToast("Connection timed out. Peer may be offline.", "error");
         if (otherPeer) { otherPeer.close(); otherPeer = null; }
+        if (connectingSpinner) connectingSpinner.classList.add("hidden");
+        if (connectionHelp) connectionHelp.classList.remove("hidden");
         pinEntrySection.classList.remove("hidden");
-        if (connectionHelp) connectionHelp.classList.add("hidden");
       }, 10000);
 
       otherPeer = peer.connect(peerIdParam);
       otherPeer.on("open", () => {
         clearTimeout(connectTimeout);
+        history.replaceState(null, "", window.location.pathname);
         remotePeerId = peerIdParam;
         reconnectAttempt = 0;
         chatContainer.classList.remove("hidden");
-        if (connectionHelp) connectionHelp.classList.add("hidden");
+        if (connectingSpinner) connectingSpinner.classList.add("hidden");
         showToast("Connected to peer!", "success");
         tryStartSending();
         renderFileQueue();
@@ -676,9 +668,22 @@ document.addEventListener("DOMContentLoaded", () => {
       otherPeer.on("close", handlePeerClose);
       otherPeer.on("error", (err) => {
         clearTimeout(connectTimeout);
-        showToast("Connection failed: " + err.message, "error");
+        const msg = err.type === "peer-unavailable" ? "No peer found — check the PIN and try again." : "Connection failed: " + err.message;
+        showToast(msg, "error");
+        if (connectingSpinner) connectingSpinner.classList.add("hidden");
+        if (connectionHelp) connectionHelp.classList.remove("hidden");
         pinEntrySection.classList.remove("hidden");
-        if (connectionHelp) connectionHelp.classList.add("hidden");
+      });
+    } else {
+      const link = `${window.location.origin}${window.location.pathname}?peer=${id}`;
+      linkInput.value = link;
+      shareLink.classList.remove("hidden");
+      const qrContainer = document.getElementById("qrContainer");
+      qrContainer.classList.remove("hidden");
+      document.getElementById("qrcode").innerHTML = "";
+      new QRCode(document.getElementById("qrcode"), {
+        text: link, width: 200, height: 200,
+        colorDark: "#0f172a", colorLight: "#ffffff",
       });
     }
   }
