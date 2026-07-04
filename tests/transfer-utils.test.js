@@ -14,7 +14,7 @@ const {
   shouldThrottleUpdate,
   CHUNK_SIZE,
   PIPELINE_WINDOW,
-} = require("../transfer-utils.js");
+} = require("../lib/transfer-utils.js");
 
 // ── formatFileSize ──────────────────────────────────────────────────────────
 
