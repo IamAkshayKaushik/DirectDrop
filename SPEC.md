@@ -30,6 +30,7 @@ Move to Next.js to unlock the acquisition roadmap (SEO landing pages, comparison
 ### Build-time env vars (all optional, inlined by Next.js)
 - `NEXT_PUBLIC_TURN_URL` / `NEXT_PUBLIC_TURN_USERNAME` / `NEXT_PUBLIC_TURN_CREDENTIAL` — TURN relay added to iceServers (required for CG-NAT/symmetric-NAT peers)
 - `NEXT_PUBLIC_DONATE_URL` — enables the post-transfer donation prompt and footer link (e.g. Buy Me a Coffee / Ko-fi)
+- `NEXT_PUBLIC_SITE_URL` — canonical production URL used by metadata, sitemap, robots, and JSON-LD (fallback `https://directdrop.app`; also update `public/llms.txt` when the domain changes)
 
 ## 4. Project Structure
 ```
