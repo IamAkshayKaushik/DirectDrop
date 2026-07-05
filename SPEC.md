@@ -27,6 +27,10 @@ Move to Next.js to unlock the acquisition roadmap (SEO landing pages, comparison
 - **Type check**: `npx tsc --noEmit`
 - **Tests**: `npm test`
 
+### Build-time env vars (all optional, inlined by Next.js)
+- `NEXT_PUBLIC_TURN_URL` / `NEXT_PUBLIC_TURN_USERNAME` / `NEXT_PUBLIC_TURN_CREDENTIAL` — TURN relay added to iceServers (required for CG-NAT/symmetric-NAT peers)
+- `NEXT_PUBLIC_DONATE_URL` — enables the post-transfer donation prompt and footer link (e.g. Buy Me a Coffee / Ko-fi)
+
 ## 4. Project Structure
 ```
 DirectDrop/
@@ -81,8 +85,8 @@ Pull-based chunked streaming over one data channel, 64KB chunks, 8-chunk pipelin
 - [ ] Legacy files (`index.html`, `app.js`, `styles.css`, `transfer-utils.js` at root) removed
 
 ## 9. Roadmap (post-migration, from acquisition review)
-1. Service-worker streaming downloads — removes the in-RAM receive limit (the real "no size limit" claim)
-2. Self-hosted PeerServer + TURN (coturn) on the production VPS — reliability on CG-NAT/mobile
+1. ~~Service-worker streaming downloads~~ — DONE (`public/sw.js` + `lib/stream-download.ts`, Blob fallback kept)
+2. Self-hosted PeerServer + TURN (coturn) on the production VPS — reliability on CG-NAT/mobile. TURN client config DONE via `NEXT_PUBLIC_TURN_*`; the server itself still needs provisioning
 3. `bufferedAmountLow` backpressure instead of per-chunk acks — throughput
 4. Resume from chunk index after reconnect
 5. Multi-receiver, folder send, nearby devices
