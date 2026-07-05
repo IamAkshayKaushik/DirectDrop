@@ -1,0 +1,17 @@
+# DirectDrop
+
+> DirectDrop is a free, browser-based, peer-to-peer file transfer tool. Files stream directly between two browsers over an end-to-end encrypted WebRTC connection — they are never uploaded to or stored on a server, and there is no file size limit, no account, and no app install.
+
+## Key facts
+
+- Free forever; supported by voluntary donations.
+- No file size limit: received files stream straight to disk.
+- End-to-end encrypted (WebRTC DTLS); files never touch a server.
+- Connect via 6-digit PIN, share link, or QR code.
+- Works in any modern browser on desktop, Android, and iOS.
+- Both sender and receiver must keep their tab open during the transfer (direct P2P — nothing is queued server-side).
+- Includes live text chat between the connected peers.
+
+## Comparison
+
+DirectDrop is an alternative to ToffeeShare, Snapdrop/PairDrop, and WeTransfer for direct device-to-device transfers where privacy matters and files are large.

@@ -1,10 +1,40 @@
 import type { Metadata, Viewport } from "next";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, FAQ } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DirectDrop — Fast, Secure P2P File Transfer",
-  description:
-    "DirectDrop — send files directly to any browser, peer-to-peer. No uploads, no size limits, end-to-end encrypted.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "DirectDrop — Free P2P File Sharing, No Size Limits",
+    template: "%s · DirectDrop",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "p2p file transfer",
+    "send large files free",
+    "browser to browser file sharing",
+    "webrtc file transfer",
+    "no size limit file sharing",
+    "encrypted file transfer",
+    "toffeeshare alternative",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: SITE_NAME,
+    title: "DirectDrop — Free P2P File Sharing, No Size Limits",
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "DirectDrop — send files browser to browser" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DirectDrop — Free P2P File Sharing, No Size Limits",
+    description: SITE_DESCRIPTION,
+    images: ["/og.png"],
+  },
+  robots: { index: true, follow: true },
   manifest: "/manifest.json",
   icons: { icon: "/icon.svg" },
 };
@@ -16,10 +46,41 @@ export const viewport: Viewport = {
   ],
 };
 
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Any",
+    browserRequirements: "Requires a WebRTC-capable browser",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    featureList: [
+      "Peer-to-peer file transfer with no size limits",
+      "End-to-end encrypted (WebRTC DTLS)",
+      "No account, no app install, no uploads",
+      "PIN, link, and QR code connection",
+      "Live chat during transfer",
+    ],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-950 dark:to-slate-900 min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 font-sans text-slate-800 dark:text-slate-100 antialiased">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         {children}
       </body>
     </html>
