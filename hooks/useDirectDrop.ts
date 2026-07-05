@@ -490,19 +490,23 @@ export function useDirectDrop() {
   async function createPeer() {
     const { default: PeerCtor } = await import("peerjs");
     if (eng.destroyed) return;
+    // STUN only discovers public IPs — it cannot relay. When both peers sit
+    // behind the same NAT (no hairpinning) or symmetric/CG-NAT, a TURN relay
+    // is REQUIRED or the datachannel will never connect.
+    const iceServers: RTCIceServer[] = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" },
+    ];
+    // Set at build time, e.g. Metered/Open Relay or Cloudflare Realtime TURN.
+    if (process.env.NEXT_PUBLIC_TURN_URL) {
+      iceServers.push({
+        urls: process.env.NEXT_PUBLIC_TURN_URL,
+        username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+        credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
+      });
+    }
     const peer = new PeerCtor(generatePin(), {
-      config: {
-        // STUN only discovers public IPs — it cannot relay. When both peers sit
-        // behind the same NAT (no hairpinning) or symmetric/CG-NAT, a TURN relay
-        // is REQUIRED or the datachannel will never connect.
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun.cloudflare.com:3478" },
-          // TODO: add a TURN server here, e.g. Metered/Open Relay or Cloudflare
-          // Realtime TURN. Example shape:
-          // { urls: "turn:your.turn.host:443", username: "...", credential: "..." },
-        ],
-      },
+      config: { iceServers },
     });
     peerRef.current = peer;
     peer.on("open", handlePeerOpen);
