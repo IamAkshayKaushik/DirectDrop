@@ -246,6 +246,10 @@ export function useDirectDrop() {
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const arrayBuffer = await file.slice(start, end).arrayBuffer();
 
+        // The transfer may have been cancelled/rejected while we were reading
+        // from disk — don't send a stray chunk or resurrect the progress card.
+        if (!eng.isSending || eng.fileData !== file) return;
+
         conn.send({ index: idx, data: arrayBuffer });
         updateTransferAnalytics("send", file.name, Math.min(eng.currentChunk * CHUNK_SIZE, file.size), file.size);
       }
@@ -256,6 +260,19 @@ export function useDirectDrop() {
     } finally {
       eng.isProcessingQueue = false;
     }
+  }
+
+  // Remove the in-flight file from the queue without marking it done —
+  // used when the transfer is cancelled by either side.
+  function dropCurrentFile() {
+    eng.isSending = false;
+    eng.fileQueue.splice(eng.currentFileIndex, 1);
+    eng.currentChunk = 0;
+    eng.chunksInFlight = 0;
+    eng.isProcessingQueue = false;
+    clearProgressIfIdle();
+    tryStartSending();
+    syncQueue();
   }
 
   function moveToNextFile() {
@@ -332,7 +349,7 @@ export function useDirectDrop() {
         if (eng.isSending) void sendNextFileChunk();
       } else if (msg === "reject") {
         showToast("Receiver rejected the file", "error");
-        moveToNextFile();
+        dropCurrentFile();
       } else if (msg === "file_received") {
         if (eng.fileData) appendLog(eng.fileData.name, eng.fileData.size);
         moveToNextFile();
@@ -674,16 +691,9 @@ export function useDirectDrop() {
   function cancelFileAt(index: number) {
     const isCurrent = index === eng.currentFileIndex;
     if (isCurrent && connRef.current?.open && eng.isSending) {
-      eng.isSending = false;
       connRef.current.send("cancel_transfer");
       showToast(`Cancelled: ${eng.fileQueue[index].name}`, "info");
-      eng.fileQueue.splice(index, 1);
-      eng.currentChunk = 0;
-      eng.chunksInFlight = 0;
-      eng.isProcessingQueue = false;
-      clearProgressIfIdle();
-      tryStartSending();
-      syncQueue();
+      dropCurrentFile();
     } else if (index > eng.currentFileIndex) {
       showToast(`Removed: ${eng.fileQueue[index].name}`, "info");
       eng.fileQueue.splice(index, 1);
