@@ -9,12 +9,17 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg" },
 };
 
-export const viewport: Viewport = { themeColor: "#14b8a6" };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#14b8a6" },
+  ],
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gradient-to-br from-slate-50 to-slate-200 min-h-screen flex items-center justify-center p-2 sm:p-4 font-sans text-slate-800">
+      <body className="bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-950 dark:to-slate-900 min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 font-sans text-slate-800 dark:text-slate-100 antialiased">
         {children}
       </body>
     </html>

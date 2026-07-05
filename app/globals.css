@@ -49,3 +49,27 @@
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+}
+
+/* Keyboard focus ring on all interactive elements */
+button:focus-visible,
+a:focus-visible,
+label:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-fade-in,
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
+  }
+}
