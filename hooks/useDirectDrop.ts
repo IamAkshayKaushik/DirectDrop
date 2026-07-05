@@ -5,6 +5,7 @@ import type Peer from "peerjs";
 import type { DataConnection } from "peerjs";
 import QRCode from "qrcode";
 import utils from "@/lib/transfer-utils";
+import { createStreamDownload, type StreamWriter } from "@/lib/stream-download";
 
 const {
   CHUNK_SIZE,
@@ -70,6 +71,7 @@ export function useDirectDrop() {
     fileData: null as File | null,
     currentChunk: 0,
     receivedChunks: [] as ArrayBuffer[],
+    streamWriter: null as StreamWriter | null,
     chunksInFlight: 0,
     isProcessingQueue: false,
     isSending: false,
@@ -277,6 +279,8 @@ export function useDirectDrop() {
     eng.incomingTotalBytes = 0;
     eng.incomingTotalChunks = 0;
     eng.receivedChunks = [];
+    eng.streamWriter?.abort();
+    eng.streamWriter = null;
     setIncoming(null);
     setReceivingActive(false);
     clearProgressIfIdle();
@@ -342,26 +346,39 @@ export function useDirectDrop() {
       } else if (msg === "done" && eng.isReceiving && !eng.downloadInitiated) {
         showToast(`Downloaded: ${eng.incomingFilename}`, "success");
         appendLog(eng.incomingFilename, eng.incomingTotalBytes);
-        const file = new Blob(eng.receivedChunks);
-        const url = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = eng.incomingFilename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // iOS Safari ignores a.click() — show persistent link as fallback
-        setManualDownload({ url, name: eng.incomingFilename });
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        if (eng.streamWriter) {
+          // Streaming path: chunks already went to disk, just finalize.
+          eng.streamWriter.close();
+          eng.streamWriter = null;
+        } else {
+          const file = new Blob(eng.receivedChunks);
+          const url = URL.createObjectURL(file);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = eng.incomingFilename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          // iOS Safari ignores a.click() — show persistent link as fallback
+          setManualDownload({ url, name: eng.incomingFilename });
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
         eng.downloadInitiated = true;
         connRef.current?.send("file_received");
         resetReceiveState();
         tryStartSending();
       } else if (typeof msg === "object" && msg !== null && msg.index !== undefined) {
         if (!eng.isReceiving) return;
-        eng.receivedChunks[msg.index] = msg.data;
+        const chunkBytes = msg.data.byteLength;
+        if (eng.streamWriter) {
+          // DataChannel is reliable+ordered, so chunks arrive in index order —
+          // safe to stream sequentially to disk without buffering.
+          eng.streamWriter.write(msg.data);
+        } else {
+          eng.receivedChunks[msg.index] = msg.data;
+        }
         const totalBytes = eng.incomingTotalBytes || eng.incomingTotalChunks * CHUNK_SIZE;
-        const receivedBytes = calculateReceivedBytes(msg.index, msg.data.byteLength, CHUNK_SIZE, totalBytes);
+        const receivedBytes = calculateReceivedBytes(msg.index, chunkBytes, CHUNK_SIZE, totalBytes);
         updateTransferAnalytics("receive", eng.incomingFilename, receivedBytes, totalBytes);
         connRef.current?.send("next");
       }
@@ -613,13 +630,23 @@ export function useDirectDrop() {
     return false;
   }
 
-  function acceptIncoming() {
+  async function acceptIncoming() {
     if (!eng.incomingFilePending) return;
     eng.incomingFilePending = false;
     eng.isReceiving = true;
     setIncoming(null);
     setReceivingActive(true);
     const totalBytes = eng.incomingTotalBytes || eng.incomingTotalChunks * CHUNK_SIZE;
+    // Stream straight to disk when service workers are available; falls back
+    // to in-memory Blob assembly otherwise (private windows, old browsers).
+    const writer = await createStreamDownload(eng.incomingFilename, eng.incomingTotalBytes);
+    if (!eng.isReceiving) {
+      // Cancelled or disconnected while the stream was being set up.
+      writer?.abort();
+      return;
+    }
+    eng.streamWriter = writer;
+    console.log(writer ? "[dd] streaming download to disk" : "[dd] fallback: buffering in memory");
     updateTransferAnalytics("receive", eng.incomingFilename, 0, totalBytes);
     connRef.current?.send("next");
   }
