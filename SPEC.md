@@ -91,3 +91,4 @@ Pull-based chunked streaming over one data channel, 64KB chunks, 8-chunk pipelin
 4. Resume from chunk index after reconnect
 5. Multi-receiver, folder send, nearby devices
 6. SEO landing/comparison pages (Next.js static routes) — the acquisition engine
+7. Voice/video calls — PeerJS `MediaConnection` (`peer.call()` + getUserMedia) over the same signaling; UI slot: action buttons in the Live Chat header
