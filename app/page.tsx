@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useDirectDrop } from "@/hooks/useDirectDrop";
+import { FAQ } from "@/lib/site";
 
 // Set NEXT_PUBLIC_DONATE_URL (e.g. a Buy Me a Coffee / Ko-fi link) at build
 // time to enable the donation prompt and footer link.
@@ -39,7 +40,7 @@ function FileIcon({ type, className }: { type: string; className: string }) {
 
 function TrustChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-full px-2.5 py-1">
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-full px-2.5 py-1">
       {children}
     </span>
   );
@@ -199,7 +200,7 @@ export default function Home() {
             {/* Connect to a peer */}
             {dd.showPinEntry && (
               <div className="mb-6 bg-white dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                <label htmlFor="pinInput" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                <label htmlFor="pinInput" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                   Have a PIN? Enter it to connect
                 </label>
                 <form onSubmit={onPinSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -218,12 +219,12 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={dd.pinConnecting}
-                    className="bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {dd.pinConnecting ? "Connecting..." : "Connect"}
                   </button>
                 </form>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Connects automatically when all 6 digits are in.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Connects automatically when all 6 digits are in.</p>
               </div>
             )}
 
@@ -289,7 +290,7 @@ export default function Home() {
                       <div className="flex items-center space-x-3 overflow-hidden">
                         <FileIcon
                           type={item.iconType}
-                          className={item.status === "done" ? "text-green-500" : "text-slate-400 dark:text-slate-500"}
+                          className={item.status === "done" ? "text-green-500" : "text-slate-500 dark:text-slate-400"}
                         />
                         <div className="overflow-hidden">
                           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate" title={item.name}>
@@ -336,7 +337,7 @@ export default function Home() {
                   ))}
                 </ul>
                 {dd.queueDrained && (
-                  <div className="flex items-center justify-center space-x-2 text-slate-400 dark:text-slate-500 text-xs py-2">
+                  <div className="flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 text-xs py-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
@@ -349,10 +350,24 @@ export default function Home() {
 
           {/* Right Column: Share, Status, Chat, Progress */}
           <div className="flex flex-col h-full">
+            {/* Skeleton reserving the share panel's slot until the PIN arrives — avoids layout shift */}
+            {!dd.pin && !dd.showSpinner && !dd.connected && (
+              <div
+                className="mb-6 bg-white dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm"
+                aria-hidden="true"
+              >
+                <div className="h-3 w-32 bg-slate-100 dark:bg-slate-700 rounded mb-3 animate-pulse" />
+                <div className="h-[88px] w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl mb-4 animate-pulse" />
+                <div className="h-11 w-full bg-slate-50 dark:bg-slate-900/60 rounded-xl animate-pulse" />
+                <div className="hidden sm:block mt-4 h-[196px] bg-slate-50 dark:bg-slate-900/60 rounded-xl animate-pulse" />
+                <div className="mt-3 h-3 w-44 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
+              </div>
+            )}
+
             {/* Share panel: your PIN, link, QR */}
             {dd.showShare && (
               <div className="mb-6 bg-white dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Your PIN — share it</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Your PIN — share it</p>
                 <button
                   type="button"
                   onClick={dd.copyPin}
@@ -362,7 +377,7 @@ export default function Home() {
                   <span className="text-3xl sm:text-4xl font-mono font-extrabold text-teal-600 dark:text-teal-400 tracking-[0.35em] select-all">
                     {dd.pin || "------"}
                   </span>
-                  <span className="block text-xs text-slate-400 dark:text-slate-500 mt-1 group-hover:text-teal-500 transition-colors">
+                  <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 group-hover:text-teal-500 transition-colors">
                     Tap to copy
                   </span>
                 </button>
@@ -392,7 +407,7 @@ export default function Home() {
                     <img src={dd.qrDataUrl} alt="QR code for share link" width={180} height={180} />
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500" role="status">
+                <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400" role="status">
                   <span className="inline-block w-2 h-2 rounded-full bg-teal-400 animate-pulse" aria-hidden="true" />
                   Waiting for someone to connect…
                 </div>
@@ -415,7 +430,7 @@ export default function Home() {
             {/* Pre-connection: how it works */}
             {dd.showHelp && (
               <div className="mb-6 p-5 bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">How it works</h2>
+                <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">How it works</h2>
                 <ol className="grid grid-cols-1 gap-3">
                   {[
                     ["Share your PIN, link, or QR code", "Your peer opens it in any browser — no app, no account"],
@@ -428,7 +443,7 @@ export default function Home() {
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{sub}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{sub}</p>
                       </div>
                     </li>
                   ))}
@@ -480,7 +495,7 @@ export default function Home() {
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-1">
                   <span className="font-medium">{dd.progress.speed}</span>
                   <span className="font-semibold text-slate-600 dark:text-slate-300">{Math.round(dd.progress.pct)}%</span>
-                  <span className="text-slate-400 dark:text-slate-500">{dd.progress.sizeText}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{dd.progress.sizeText}</span>
                 </div>
                 {dd.receivingActive && (
                   <button
@@ -527,7 +542,7 @@ export default function Home() {
             {/* Transfer History */}
             {dd.log.length > 0 && (
               <div className="mb-6">
-                <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Transferred</h2>
+                <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Transferred</h2>
                 <ul className="flex flex-col gap-1.5">
                   {dd.log.map((entry) => (
                     <li
@@ -538,7 +553,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="font-medium truncate text-slate-700 dark:text-slate-200">{entry.name}</span>
-                      <span className="ml-auto text-slate-400 dark:text-slate-500 shrink-0">{entry.sizeLabel}</span>
+                      <span className="ml-auto text-slate-500 dark:text-slate-400 shrink-0">{entry.sizeLabel}</span>
                     </li>
                   ))}
                 </ul>
@@ -562,7 +577,7 @@ export default function Home() {
                 <div className="flex space-x-3 mt-4">
                   <button
                     onClick={dd.acceptIncoming}
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-all shadow-sm shadow-teal-500/30"
+                    className="flex-1 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-all shadow-sm shadow-teal-500/30"
                   >
                     Accept
                   </button>
@@ -592,7 +607,7 @@ export default function Home() {
                     ref={chatBoxRef}
                     className="h-40 overflow-y-auto p-4 text-sm flex flex-col space-y-3 bg-white dark:bg-transparent scroll-smooth custom-scrollbar"
                   >
-                    <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-auto">Connection established. Say hi!</div>
+                    <div className="text-center text-xs text-slate-500 dark:text-slate-400 mt-auto">Connection established. Say hi!</div>
                     {dd.chat.map((msg) => (
                       <div key={msg.id} className={`flex animate-fade-in mb-2 ${msg.sender === "you" ? "justify-end" : "justify-start"}`}>
                         <div
@@ -619,7 +634,7 @@ export default function Home() {
                     />
                     <button
                       type="submit"
-                      className="bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-teal-500/20"
+                      className="bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-teal-500/20"
                     >
                       Send
                     </button>
@@ -631,19 +646,51 @@ export default function Home() {
         </div>
       </main>
 
-      {DONATE_URL && (
-        <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">
-          Free forever ·{" "}
-          <a
-            href={DONATE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            Support DirectDrop ❤️
-          </a>
-        </p>
-      )}
+      {/* Crawlable FAQ — native <details>, no JS. Mirrored as FAQPage JSON-LD. */}
+      <section id="faq" className="max-w-5xl w-full mt-8 px-2 sm:px-0" aria-labelledby="faq-heading">
+        <h2 id="faq-heading" className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+          Frequently asked questions
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {FAQ.map(({ q, a }) => (
+            <details
+              key={q}
+              className="group bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl px-4 py-3 open:pb-4"
+            >
+              <summary className="cursor-pointer list-none flex items-center justify-between gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {q}
+                <svg
+                  className="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform group-open:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <p className="mt-6 mb-2 text-xs text-slate-500 dark:text-slate-400">
+        Free forever
+        {DONATE_URL && (
+          <>
+            {" · "}
+            <a
+              href={DONATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-300"
+            >
+              Support DirectDrop ❤️
+            </a>
+          </>
+        )}
+      </p>
 
       {/* Toasts */}
       <div className="fixed top-6 right-6 z-50 flex flex-col space-y-3 max-w-sm" aria-live="polite">
