@@ -62,6 +62,7 @@ export function useDirectDrop() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null);
+  const [donateHint, setDonateHint] = useState(false);
 
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
@@ -269,6 +270,7 @@ export function useDirectDrop() {
       eng.isProcessingQueue = false;
       clearProgressIfIdle();
       syncQueue();
+      setDonateHint(true);
     }
   }
 
@@ -365,6 +367,7 @@ export function useDirectDrop() {
         }
         eng.downloadInitiated = true;
         connRef.current?.send("file_received");
+        setDonateHint(true);
         resetReceiveState();
         tryStartSending();
       } else if (typeof msg === "object" && msg !== null && msg.index !== undefined) {
@@ -729,6 +732,8 @@ export function useDirectDrop() {
     toasts,
     log,
     manualDownload,
+    donateHint,
+    dismissDonate: () => setDonateHint(false),
     addFiles,
     connectToPin,
     sendChat,

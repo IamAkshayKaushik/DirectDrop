@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useDirectDrop } from "@/hooks/useDirectDrop";
 
+// Set NEXT_PUBLIC_DONATE_URL (e.g. a Buy Me a Coffee / Ko-fi link) at build
+// time to enable the donation prompt and footer link.
+const DONATE_URL = process.env.NEXT_PUBLIC_DONATE_URL ?? "";
+
 function FileIcon({ type, className }: { type: string; className: string }) {
   const cls = `w-6 h-6 ${className} flex-shrink-0`;
   if (type === "image") {
@@ -388,6 +392,34 @@ export default function Home() {
               </div>
             )}
 
+            {/* Donation prompt after a successful transfer */}
+            {DONATE_URL && dd.donateHint && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                <span className="text-xl">❤️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-slate-800">Transfer complete — glad it helped!</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    DirectDrop is free, private, and has no size limits. A small donation keeps it that way.
+                  </p>
+                  <a
+                    href={DONATE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Buy me a coffee ☕
+                  </a>
+                </div>
+                <button
+                  onClick={dd.dismissDonate}
+                  aria-label="Dismiss"
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+
             {/* Transfer History */}
             {dd.log.length > 0 && (
               <div className="mb-6">
@@ -487,6 +519,15 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {DONATE_URL && (
+        <p className="mt-4 text-xs text-slate-400">
+          Free forever ·{" "}
+          <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-slate-600">
+            Support DirectDrop ❤️
+          </a>
+        </p>
+      )}
 
       {/* Toasts */}
       <div className="fixed top-6 right-6 z-50 flex flex-col space-y-3 max-w-sm">
