@@ -4,14 +4,13 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
 
-/app.js
-  Cache-Control: no-cache, must-revalidate
+# Hashed Next.js assets are immutable
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
 
-/transfer-utils.js
+# The service worker must revalidate so streaming-download updates ship instantly
+/sw.js
   Cache-Control: no-cache, must-revalidate
 
 /index.html
   Cache-Control: no-cache, must-revalidate
-
-/styles.css
-  Cache-Control: public, max-age=604800, immutable
