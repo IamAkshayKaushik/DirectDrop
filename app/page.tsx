@@ -184,7 +184,7 @@ export default function Home() {
 
             {/* Connect to a peer */}
             {dd.showPinEntry && (
-              <div className="mb-6 bg-white dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+              <div className="mb-6 p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700/60">
                 <label htmlFor="pinInput" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                   Have a PIN? Enter it to connect
                 </label>
@@ -224,7 +224,7 @@ export default function Home() {
                     (document.getElementById("fileInput") as HTMLInputElement | null)?.click();
                   }
                 }}
-                className={`flex flex-col items-center justify-center w-full h-36 sm:h-44 border-2 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:border-teal-400 transition-all duration-200 group ${
+                className={`flex flex-col items-center justify-center w-full h-52 sm:h-60 border-2 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:border-teal-400 transition-all duration-200 group ${
                   dragActive ? "border-teal-400 bg-teal-50/50 dark:bg-teal-500/10 scale-[1.02]" : "border-slate-300 dark:border-slate-600"
                 }`}
               >
