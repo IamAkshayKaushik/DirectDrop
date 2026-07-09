@@ -38,14 +38,6 @@ function FileIcon({ type, className }: { type: string; className: string }) {
   );
 }
 
-function TrustChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-full px-2.5 py-1">
-      {children}
-    </span>
-  );
-}
-
 const toastIcons = {
   success: (
     <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -139,12 +131,11 @@ export default function Home() {
 
   return (
     <>
-      {/* Decorative background blobs */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-200/40 dark:bg-teal-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-70 animate-blob" />
-        <div className="absolute top-[20%] right-[-5%] w-72 h-72 bg-blue-200/40 dark:bg-blue-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-[-20%] left-[20%] w-80 h-80 bg-slate-300/40 dark:bg-slate-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-4000" />
-      </div>
+      {/* Ambient background veil — a single fixed gradient, no blur-blob soup */}
+      <div
+        className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(20,184,166,0.15),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(20,184,166,0.08),transparent)]"
+        aria-hidden="true"
+      />
 
       {/* Full-page drop overlay */}
       {dragActive && (
@@ -165,36 +156,30 @@ export default function Home() {
           <div className="flex flex-col">
             <header className="text-left mb-8">
               <div className="flex items-center gap-3 mb-3">
-                <div className="inline-flex items-center justify-center w-11 h-11 bg-teal-100 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 rounded-xl shadow-sm">
+                <div className="inline-flex items-center justify-center w-11 h-11 bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-lg shadow-teal-500/25">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">DirectDrop</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Fast, secure peer-to-peer file transfer</p>
+                  <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-slate-900 dark:text-white">
+                    DirectDrop
+                  </h1>
+                  <p className="text-base text-slate-500 dark:text-slate-400 mt-1.5 font-medium">Fast, secure peer-to-peer file transfer</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                <TrustChip>
-                  <svg className="w-3 h-3 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   End-to-end encrypted
-                </TrustChip>
-                <TrustChip>
-                  <svg className="w-3 h-3 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  No size limits
-                </TrustChip>
-                <TrustChip>
-                  <svg className="w-3 h-3 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m9.9 2.829a5 5 0 010 7.07m-7.072 0a5 5 0 010-7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
-                  </svg>
-                  No servers, no signups
-                </TrustChip>
-              </div>
+                </span>
+                <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+                <span>No size limits</span>
+                <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+                <span>No servers, no signups</span>
+              </p>
             </header>
 
             {/* Connect to a peer */}
@@ -244,7 +229,7 @@ export default function Home() {
                 }`}
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                  <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform duration-200">
+                  <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-md ring-1 ring-slate-900/5 dark:ring-white/10 mb-4 group-hover:scale-110 group-hover:shadow-teal-500/20 dark:group-hover:shadow-teal-400/10 transition-all duration-200">
                     <svg className="w-8 h-8 text-teal-500" aria-hidden="true" fill="none" viewBox="0 0 20 16">
                       <path
                         stroke="currentColor"
@@ -429,7 +414,7 @@ export default function Home() {
 
             {/* Pre-connection: how it works */}
             {dd.showHelp && (
-              <div className="mb-6 p-5 bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+              <div className="mb-6 p-5">
                 <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">How it works</h2>
                 <ol className="grid grid-cols-1 gap-3">
                   {[
@@ -512,7 +497,7 @@ export default function Home() {
             {/* Donation prompt after a successful transfer */}
             {DONATE_URL && dd.donateHint && (
               <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl flex items-start gap-3 animate-fade-in">
-                <span className="text-xl" aria-hidden="true">
+                <span className="text-xl animate-pop-in" aria-hidden="true">
                   ❤️
                 </span>
                 <div className="flex-1">
