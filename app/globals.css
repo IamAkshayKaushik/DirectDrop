@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Manual theme toggle: .dark class (set via inline script + toggle button)
+   takes priority; falls back to OS preference when absent. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Chat bubble / queue item entrance */
 @keyframes fade-in {
   from {

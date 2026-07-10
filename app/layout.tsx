@@ -76,9 +76,20 @@ const structuredData = [
   },
 ];
 
+const themeInitScript = `(function () {
+  try {
+    var stored = localStorage.getItem("theme");
+    var isDark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", isDark);
+  } catch (e) {}
+})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-950 dark:to-slate-900 min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 font-sans text-slate-800 dark:text-slate-100 antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         {children}
