@@ -63,6 +63,7 @@ export function useDirectDrop() {
   const [log, setLog] = useState<LogEntry[]>([]);
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null);
   const [donateHint, setDonateHint] = useState(false);
+  const [role, setRole] = useState<"host" | "guest" | null>(null);
 
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
@@ -462,6 +463,7 @@ export function useDirectDrop() {
     conn.on("open", () => {
       eng.remotePeerId = conn.peer;
       eng.reconnectAttempt = 0;
+      setRole("host");
       enterConnectedUI("Peer connected!");
     });
     conn.on("data", handleData);
@@ -495,6 +497,7 @@ export function useDirectDrop() {
         history.replaceState(null, "", window.location.pathname);
         eng.remotePeerId = peerIdParam;
         eng.reconnectAttempt = 0;
+        setRole("guest");
         enterConnectedUI("Connected to peer!");
       });
       conn.on("data", handleData);
@@ -624,6 +627,7 @@ export function useDirectDrop() {
       clearTimeout(connectTimeout);
       eng.remotePeerId = pinValue;
       setPinConnecting(false);
+      setRole("guest");
       enterConnectedUI("Connected to peer!");
     });
     conn.on("data", handleData);
@@ -742,6 +746,7 @@ export function useDirectDrop() {
     toasts,
     log,
     manualDownload,
+    role,
     donateHint,
     dismissDonate: () => setDonateHint(false),
     addFiles,

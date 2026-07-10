@@ -609,6 +609,11 @@ export default function Home() {
                 <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-green-600 dark:text-green-400" role="status">
                   <span className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true" />
                   Connected
+                  {dd.role && (
+                    <span className="font-normal text-slate-400 dark:text-slate-500">
+                      &middot; {dd.role === "host" ? "you created this connection" : "you joined via PIN"}
+                    </span>
+                  )}
                 </div>
                 <div className="w-full bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[80px] sm:min-h-[200px]">
                   <div className="bg-slate-50 dark:bg-slate-800 px-4 py-3 border-b border-slate-100 dark:border-slate-700/60 flex items-center space-x-2">
