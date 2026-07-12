@@ -35,6 +35,25 @@
   animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
 }
 
+/* Transfer-complete confetti — particles fly outward from center then fall */
+@keyframes confetti {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), calc(var(--ty) + 120px)) rotate(540deg) scale(0.4);
+    opacity: 0;
+  }
+}
+.confetti-particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti 0.9s cubic-bezier(0.25, 0.8, 0.5, 1) both;
+}
+
 /* Thin scrollbar for the queue list */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -68,5 +87,9 @@ label:focus-visible,
   .animate-spin,
   .animate-pop-in {
     animation: none;
+  }
+  /* Hide entirely: without the animation the particles would sit visible at center */
+  .confetti-particle {
+    display: none;
   }
 }

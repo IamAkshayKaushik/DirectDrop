@@ -35,3 +35,11 @@ export const FAQ: { q: string; a: string }[] = [
     a: "Yes. DirectDrop runs in any modern browser on desktop, Android, and iOS — no app install needed. Scan the QR code to connect a phone instantly.",
   },
 ];
+
+// Rendered on the homepage "How it works" section and mirrored as HowTo
+// structured data — keep both in sync by editing only this list.
+export const HOW_IT_WORKS: { title: string; detail: string }[] = [
+  { title: "Share your PIN, link, or QR code", detail: "Your peer opens it in any browser — no app, no account" },
+  { title: "Pick files, they ask to accept", detail: "Nothing transfers until the receiver says yes" },
+  { title: "Files stream directly to them", detail: "Encrypted browser-to-browser, never stored on a server" },
+];

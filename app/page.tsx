@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { useDirectDrop } from "@/hooks/useDirectDrop";
-import { FAQ } from "@/lib/site";
+import { FAQ, HOW_IT_WORKS } from "@/lib/site";
 
 // Set NEXT_PUBLIC_DONATE_URL (e.g. a Buy Me a Coffee / Ko-fi link) at build
 // time to enable the donation prompt and footer link.
@@ -63,9 +63,29 @@ export default function Home() {
   const [dragActive, setDragActive] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [pinCopied, setPinCopied] = useState(false);
+  const [celebrate, setCelebrate] = useState(0);
   const chatBoxRef = useRef<HTMLDivElement>(null);
+  const pinCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevLogLen = useRef(0);
   const addFilesRef = useRef(dd.addFiles);
   addFilesRef.current = dd.addFiles;
+
+  function onCopyPin() {
+    dd.copyPin();
+    setPinCopied(true);
+    if (pinCopiedTimer.current) clearTimeout(pinCopiedTimer.current);
+    pinCopiedTimer.current = setTimeout(() => setPinCopied(false), 1500);
+  }
+
+  // Celebrate each completed transfer: confetti burst + a haptic tap on mobile.
+  useEffect(() => {
+    if (dd.log.length > prevLogLen.current) {
+      setCelebrate((c) => c + 1);
+      navigator.vibrate?.(60);
+    }
+    prevLogLen.current = dd.log.length;
+  }, [dd.log.length]);
 
   useEffect(() => {
     setIsTouch(navigator.maxTouchPoints > 0);
@@ -382,15 +402,21 @@ export default function Home() {
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Your PIN — share it</p>
                 <button
                   type="button"
-                  onClick={dd.copyPin}
+                  onClick={onCopyPin}
                   title="Copy PIN"
-                  className="group w-full text-center bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl py-3 mb-4 hover:border-teal-400 transition-colors"
+                  className={`group w-full text-center bg-slate-50 dark:bg-slate-900/60 border rounded-xl py-3 mb-4 transition-all ${
+                    pinCopied ? "border-teal-400 scale-[1.02]" : "border-slate-200 dark:border-slate-700 hover:border-teal-400"
+                  }`}
                 >
                   <span className="text-3xl sm:text-4xl font-mono font-extrabold text-teal-600 dark:text-teal-400 tracking-[0.35em] select-all">
                     {dd.pin || "------"}
                   </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 group-hover:text-teal-500 transition-colors">
-                    Tap to copy
+                  <span
+                    className={`block text-xs mt-1 transition-colors ${
+                      pinCopied ? "font-semibold text-teal-500" : "text-slate-500 dark:text-slate-400 group-hover:text-teal-500"
+                    }`}
+                  >
+                    {pinCopied ? "Copied ✓" : "Tap to copy"}
                   </span>
                 </button>
                 <div className="flex items-center space-x-2">
@@ -444,18 +470,14 @@ export default function Home() {
               <div className="mb-6 p-5">
                 <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">How it works</h2>
                 <ol className="grid grid-cols-1 gap-3">
-                  {[
-                    ["Share your PIN, link, or QR code", "Your peer opens it in any browser — no app, no account"],
-                    ["Pick files, they ask to accept", "Nothing transfers until the receiver says yes"],
-                    ["Files stream directly to them", "Encrypted browser-to-browser, never stored on a server"],
-                  ].map(([title, sub], i) => (
+                  {HOW_IT_WORKS.map(({ title, detail }, i) => (
                     <li key={title} className="flex items-center gap-3">
                       <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center text-sm font-bold text-teal-600 dark:text-teal-400">
                         {i + 1}
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{sub}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>
                       </div>
                     </li>
                   ))}
@@ -622,7 +644,7 @@ export default function Home() {
                   </div>
                   <div
                     ref={chatBoxRef}
-                    className="h-40 overflow-y-auto p-4 text-sm flex flex-col space-y-3 bg-white dark:bg-transparent scroll-smooth custom-scrollbar"
+                    className="flex-1 min-h-40 overflow-y-auto p-4 text-sm flex flex-col space-y-3 bg-white dark:bg-transparent scroll-smooth custom-scrollbar"
                   >
                     <div className="text-center text-xs text-slate-500 dark:text-slate-400 mt-auto">Connection established. Say hi!</div>
                     {dd.chat.map((msg) => (
@@ -708,6 +730,30 @@ export default function Home() {
           </>
         )}
       </p>
+
+      {/* Confetti burst on each completed transfer — pure CSS, remounts per celebration */}
+      {celebrate > 0 && (
+        <div key={celebrate} className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center" aria-hidden="true">
+          {Array.from({ length: 18 }).map((_, i) => {
+            const angle = (i / 18) * 2 * Math.PI;
+            const dist = 120 + (i % 3) * 60;
+            return (
+              <i
+                key={i}
+                className="confetti-particle"
+                style={
+                  {
+                    "--tx": `${Math.cos(angle) * dist}px`,
+                    "--ty": `${Math.sin(angle) * dist - 40}px`,
+                    background: ["#14b8a6", "#f59e0b", "#f43f5e", "#38bdf8"][i % 4],
+                    animationDelay: `${(i % 5) * 40}ms`,
+                  } as CSSProperties
+                }
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Toasts */}
       <div className="fixed top-6 right-6 z-50 flex flex-col space-y-3 max-w-sm" aria-live="polite">

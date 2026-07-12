@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, FAQ } from "@/lib/site";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, FAQ, HOW_IT_WORKS } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -72,6 +72,16 @@ const structuredData = [
       "@type": "Question",
       name: q,
       acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: "How to send a file with DirectDrop",
+    step: HOW_IT_WORKS.map(({ title, detail }) => ({
+      "@type": "HowToStep",
+      name: title,
+      text: detail,
     })),
   },
 ];

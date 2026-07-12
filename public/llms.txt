@@ -14,9 +14,10 @@
 
 ## Comparison
 
-DirectDrop is an alternative to ToffeeShare, Snapdrop/PairDrop, and WeTransfer for direct device-to-device transfers where privacy matters and files are large.
+DirectDrop is an alternative to ToffeeShare, Snapdrop/PairDrop, and WeTransfer for direct device-to-device transfers where privacy matters and files are large. Unlike some alternatives, DirectDrop includes live text chat alongside the file transfer and streams received files straight to disk without buffering the whole file in memory.
 
 ## Links
 
 - [Open DirectDrop](https://directdrop.app/): the app itself — sending a file takes one page load
 - [FAQ](https://directdrop.app/#faq): answers about privacy, size limits, and how transfers work
+- [DirectDrop vs ToffeeShare](https://directdrop.app/vs/toffeeshare): feature-by-feature comparison
