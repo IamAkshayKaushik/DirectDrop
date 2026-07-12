@@ -1,8 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 /* Manual theme toggle: .dark class (set via inline script + toggle button)
    takes priority; falls back to OS preference when absent. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* DirectDrop Design System — Gray/Indigo, flat surfaces, hairline borders.
+   Light is the default (:root); .dark overrides the same variables. */
+:root {
+  --gray-0: #FCFCFD;
+  --gray-1: #FFFFFF;
+  --gray-2: #FFFFFF;
+  --gray-3: #F2F2F5;
+  --gray-4: #E4E4EA;
+  --gray-9: #8A8A94;
+  --gray-10: #5F5F6A;
+  --gray-12: #17171C;
+
+  --indigo-9: #4F5BD5;
+  --indigo-10: #3D49C4;
+  --indigo-a2: rgba(79, 91, 213, 0.10);
+
+  --bg: var(--gray-0);
+  --surface: var(--gray-1);
+  --surface-elevated: var(--gray-2);
+  --surface-hover: var(--gray-3);
+  --surface-code: #F7F7F9;
+
+  --hairline: rgba(9, 9, 11, 0.08);
+  --hairline-strong: rgba(9, 9, 11, 0.16);
+
+  --text: var(--gray-12);
+  --text-muted: var(--gray-10);
+  --text-subtle: var(--gray-9);
+  --text-invert: #FFFFFF;
+
+  --interactive: var(--indigo-9);
+  --interactive-hover: var(--indigo-10);
+  --interactive-wash: var(--indigo-a2);
+  --focus-ring: rgba(79, 91, 213, 0.45);
+  --selection-bg: rgba(79, 91, 213, 0.18);
+
+  --success: #1E8E68;
+  --success-wash: rgba(62, 180, 137, 0.12);
+  --warning: #A87A22;
+  --warning-wash: rgba(217, 163, 68, 0.12);
+  --error: #C93E4A;
+  --error-wash: rgba(229, 100, 110, 0.12);
+
+  --shadow-1: 0 1px 2px rgba(9, 9, 11, 0.05);
+  --shadow-2: 0 4px 16px rgba(9, 9, 11, 0.08), 0 1px 3px rgba(9, 9, 11, 0.05);
+  --shadow-3: 0 16px 48px rgba(9, 9, 11, 0.16), 0 4px 12px rgba(9, 9, 11, 0.08);
+
+  color-scheme: light;
+}
+
+.dark {
+  --gray-0: #09090B;
+  --gray-1: #101012;
+  --gray-2: #161619;
+  --gray-3: #1E1E22;
+  --gray-4: #2A2A30;
+  --gray-9: #6C6C76;
+  --gray-10: #A2A2AC;
+  --gray-12: #EDEDF0;
+
+  --indigo-9: #6B7CFF;
+  --indigo-10: #8493FF;
+  --indigo-a2: rgba(107, 124, 255, 0.12);
+
+  --surface-code: #0D0D10;
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --text-invert: #09090B;
+
+  --focus-ring: rgba(107, 124, 255, 0.55);
+  --selection-bg: rgba(107, 124, 255, 0.28);
+
+  --success: #3EB489;
+  --success-wash: rgba(62, 180, 137, 0.12);
+  --warning: #D9A344;
+  --warning-wash: rgba(217, 163, 68, 0.12);
+  --error: #E5646E;
+  --error-wash: rgba(229, 100, 110, 0.12);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-3: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  color-scheme: dark;
+}
+
+::selection {
+  background: var(--selection-bg);
+}
+
+@theme {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 16px;
+
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-1);
+  --shadow-lg: var(--shadow-2);
+  --shadow-2xl: var(--shadow-3);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-code: var(--surface-code);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-invert: var(--text-invert);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
+  --color-interactive-wash: var(--interactive-wash);
+  --color-success: var(--success);
+  --color-success-wash: var(--success-wash);
+  --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-error: var(--error);
+  --color-error-wash: var(--error-wash);
+}
 
 /* Chat bubble / queue item entrance */
 @keyframes fade-in {
@@ -59,16 +188,11 @@
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--hairline-strong);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-}
-@media (prefers-color-scheme: dark) {
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #334155;
-  }
 }
 
 /* Keyboard focus ring on all interactive elements */
@@ -76,9 +200,9 @@ button:focus-visible,
 a:focus-visible,
 label:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #14b8a6;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
