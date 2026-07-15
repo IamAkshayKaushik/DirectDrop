@@ -160,10 +160,23 @@ export default function Home() {
 
   return (
     <>
-      {/* Ambient background veil — a single fixed gradient, no blur-blob soup */}
+      {/* Ambient background veil — rig.ai-style warm radial wash from the top
+          center, fading to the dark canvas. Single fixed gradient, no blur-blob soup. */}
       <div
-        className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--interactive-wash),transparent)]"
+        className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(ellipse_70%_55%_at_50%_-15%,var(--interactive-wash),transparent_70%)]"
         aria-hidden="true"
+      />
+      {/* Faint horizon grid — a subtle reference to the rig.ai perspective grid */}
+      <div
+        className="fixed inset-x-0 top-0 -z-10 pointer-events-none h-[60vh] opacity-[0.07]"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, var(--hairline-strong) 1px, transparent 1px), linear-gradient(to bottom, var(--hairline-strong) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(ellipse 70% 100% at 50% 0%, black 30%, transparent 80%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 100% at 50% 0%, black 30%, transparent 80%)",
+        }}
       />
 
       {/* Full-page drop overlay */}
@@ -183,16 +196,19 @@ export default function Home() {
         <header className="text-left mb-8">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center justify-center w-11 h-11 bg-interactive text-text-invert rounded-xl shadow-lg">
+              <div className="inline-flex items-center justify-center w-11 h-11 bg-interactive text-text-invert rounded-xl shadow-lg" style={{ boxShadow: "var(--shadow-1), var(--glow-accent)" }}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-text">
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
+                  Peer-to-peer file transfer
+                </p>
+                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
                   DirectDrop
                 </h1>
-                <p className="text-base text-text-muted mt-1.5 font-medium">Fast, secure peer-to-peer file transfer</p>
+                <p className="text-base text-text-muted mt-1.5 font-medium">Fast, secure browser-to-browser file transfer</p>
               </div>
             </div>
             <button
@@ -745,7 +761,7 @@ export default function Home() {
                   {
                     "--tx": `${Math.cos(angle) * dist}px`,
                     "--ty": `${Math.sin(angle) * dist - 40}px`,
-                    background: ["#6B7CFF", "#3EB489", "#D9A344", "#A28BFA"][i % 4],
+                    background: ["#FF5A1F", "#FF7A3D", "#FF9966", "#FFFFFF"][i % 4],
                     animationDelay: `${(i % 5) * 40}ms`,
                   } as CSSProperties
                 }

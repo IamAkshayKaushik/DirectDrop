@@ -520,7 +520,9 @@ export function useDirectDrop() {
       QRCode.toDataURL(link, {
         width: 200,
         margin: 1,
-        color: { dark: "#0f172a", light: "#ffffff" },
+        // QR modules in the foreground color on a white card behind them;
+        // the card uses bg-white so QR contrast stays high regardless of theme.
+        color: { dark: "#0A0A0B", light: "#ffffff" },
       })
         .then(setQrDataUrl)
         .catch(() => {});

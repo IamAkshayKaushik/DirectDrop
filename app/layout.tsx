@@ -41,8 +41,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#09090B" },
-    { media: "(prefers-color-scheme: light)", color: "#FCFCFD" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0B" },
+    { media: "(prefers-color-scheme: light)", color: "#FAF7F5" },
   ],
 };
 
@@ -89,7 +89,9 @@ const structuredData = [
 const themeInitScript = `(function () {
   try {
     var stored = localStorage.getItem("theme");
-    var isDark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    // Dark-first: stored value wins; otherwise default to dark (the rig.ai
+    // aesthetic is designed around a near-black canvas).
+    var isDark = stored ? stored === "dark" : true;
     document.documentElement.classList.toggle("dark", isDark);
   } catch (e) {}
 })();`;
