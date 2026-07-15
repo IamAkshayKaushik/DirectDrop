@@ -23,7 +23,7 @@ DirectDrop is a peer-to-peer file transfer web app using WebRTC (via PeerJS). It
 - **`app/page.tsx`** — Main UI, a single client component. Markup only; all logic comes from the hook.
 - **`hooks/useDirectDrop.ts`** — The engine. PeerJS connection lifecycle, chunked file transfer (64KB chunks, 8-chunk pipeline window via `Blob.slice`), file queue, chat, reconnect with backoff, toasts. Imperative transfer state lives in refs; UI state in React state.
 - **`lib/transfer-utils.js`** — Pure helpers (chunk math, size/ETA formatting, PIN generation/validation). Plain JS so `node --test` runs it without a build step.
-- **`app/globals.css`** — Tailwind 4 import plus custom keyframes (blob, fade-in) and scrollbar styles.
+- **`app/globals.css`** — Tailwind 4 import plus custom keyframes (fade-in, confetti) and scrollbar styles. Holds the full design-system token map and the `@theme` block that exposes them as Tailwind colors.
 - **`public/`** — `manifest.json` (PWA), `icon.svg`, `_headers` (Cloudflare Pages/Netlify headers).
 
 ### Connection Flow
@@ -47,11 +47,20 @@ Chat messages use `{type: "chat", text}` objects on the same data channel.
 ## Code Style
 
 - TypeScript for app/hook code; `lib/transfer-utils.js` stays plain JS (test-runner compatibility)
-- Tailwind utility classes; Teal/Slate palette with glassmorphism design
+- Tailwind utility classes; orange-red-on-near-black design system (inspired by rig.ai) — flat surfaces, hairline borders, semantic color tokens (`bg-surface`, `text-text-muted`, `border-hairline`, `text-interactive`, etc.) defined in `app/globals.css`. Dark is the default theme; light is a first-class opt-in via the existing toggle.
+- Inter (sans) + JetBrains Mono (code) via Google Fonts. Display type is Inter 700–800 with tight tracking (-0.03em); eyebrow labels are uppercase 12px in `--interactive` with 0.18em tracking.
 - No DOM manipulation — state drives the UI
+
+## Design system
+
+The full brand spec lives in `/DirectDrop Design System/` (read `README.md` for philosophy, then `tokens/`, `guidelines/`, `components/`, `ui_kits/`). It is the source of truth for visual decisions; `app/globals.css` is the implementation. Three rules keep them in sync:
+
+1. **Never invent new color, type, or spacing values.** Use the existing semantic tokens (`bg-interactive`, `text-text-muted`, `border-hairline-strong`, `font-sans`, `font-mono`, etc.). New tokens go in both the design system tokens and the app's `:root` / `.dark` blocks.
+2. **Never rename a token without updating both files.** The class names (`bg-surface`, `text-interactive`, etc.) and the CSS variable names (`--surface`, `--interactive`) are public contracts. Renames are a design-system change, not a refactor.
+3. **Eyebrows are always in `--interactive`, always uppercase, always tracked.** That's the rig.ai rhythm that gives the brand its confidence.
 
 ## Boundaries
 
-- **Always do:** Preserve chunked `Blob.slice` streaming — never load entire files into memory to send. Keep the Teal/Slate glassmorphism design palette.
-- **Ask first:** Adding new runtime dependencies. Changing the PeerJS signaling server config.
-- **Never do:** Render peer-controlled strings with `dangerouslySetInnerHTML`. Use browser `alert()` popups. Add server-side file handling.
+- **Always do:** Preserve chunked `Blob.slice` streaming — never load entire files into memory to send. Keep the orange-red flat design system (hairline borders, no translucency/blur on content containers — glass/blur is reserved for fixed chrome over scrolling content, like the full-page drag overlay). The single warm radial wash on the hero is the only ambient layer.
+- **Ask first:** Adding new runtime dependencies. Changing the PeerJS signaling server config. Adding new design-system tokens (extend the existing scale, don't fork).
+- **Never do:** Render peer-controlled strings with `dangerouslySetInnerHTML`. Use browser `alert()` popups. Add server-side file handling. Add a second accent color — the orange-red is the only signal color.
