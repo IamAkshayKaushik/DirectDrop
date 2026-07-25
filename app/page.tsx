@@ -203,12 +203,14 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
-                  Peer-to-peer file transfer
+                  Open on the device that should receive
                 </p>
                 <h1 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
                   DirectDrop
                 </h1>
-                <p className="text-base text-text-muted mt-1.5 font-medium">Fast, secure browser-to-browser file transfer</p>
+                <p className="text-base text-text-muted mt-1.5 font-medium">
+                  Share a QR or link — anyone can send original files straight to you
+                </p>
               </div>
             </div>
             <button
@@ -228,7 +230,7 @@ export default function Home() {
               )}
             </button>
           </div>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-text-muted">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-text-muted mb-4">
             <span className="inline-flex items-center gap-1">
               <svg className="w-3.5 h-3.5 text-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -240,6 +242,18 @@ export default function Home() {
             <span className="text-text-subtle" aria-hidden="true">·</span>
             <span>No servers, no signups</span>
           </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href="#share"
+              className="inline-flex items-center gap-2 bg-interactive hover:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm animate-fade-in"
+            >
+              Receive files
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
+            <span className="text-xs text-text-muted">No install. No account. Files stay between you.</span>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 flex-1">
@@ -414,7 +428,7 @@ export default function Home() {
 
             {/* Share panel: your PIN, link, QR */}
             {dd.showShare && (
-              <div className="mb-6 bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
+              <div id="share" className="mb-6 bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
                 <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Your PIN — share it</p>
                 <button
                   type="button"
