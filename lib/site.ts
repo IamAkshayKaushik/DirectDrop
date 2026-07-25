@@ -39,7 +39,7 @@ export const FAQ: { q: string; a: string }[] = [
 // Rendered on the homepage "How it works" section and mirrored as HowTo
 // structured data — keep both in sync by editing only this list.
 export const HOW_IT_WORKS: { title: string; detail: string }[] = [
-  { title: "Open on the device that should receive", detail: "Tap Receive files — your PIN, link, and QR appear instantly" },
-  { title: "Share the link or QR with the sender", detail: "Anyone can open it in any browser — no app, no account" },
-  { title: "They pick files, you accept, files stream to you", detail: "Encrypted browser-to-browser, never stored on a server" },
+  { title: "Share your PIN, link, or QR code", detail: "Your peer opens it in any browser — no app, no account" },
+  { title: "Pick files, they ask to accept", detail: "Nothing transfers until the receiver says yes" },
+  { title: "Files stream directly to them", detail: "Encrypted browser-to-browser, never stored on a server" },
 ];

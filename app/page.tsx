@@ -203,13 +203,13 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
-                  Open on the device that should receive
+                  Peer-to-peer file transfer
                 </p>
                 <h1 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
                   DirectDrop
                 </h1>
                 <p className="text-base text-text-muted mt-1.5 font-medium">
-                  Share a QR or link — anyone can send original files straight to you
+                  Fast, secure browser-to-browser file transfer
                 </p>
               </div>
             </div>
@@ -243,15 +243,6 @@ export default function Home() {
             <span>No servers, no signups</span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <a
-              href="#share"
-              className="inline-flex items-center gap-2 bg-interactive hover:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm animate-fade-in"
-            >
-              Receive files
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </a>
             <span className="text-xs text-text-muted">No install. No account. Files stay between you.</span>
           </div>
         </header>
