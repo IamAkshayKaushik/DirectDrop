@@ -538,6 +538,26 @@ export function useDirectDrop() {
     const iceServers: RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
     ];
     // Set at build time, e.g. Metered/Open Relay or Cloudflare Realtime TURN.
     if (process.env.NEXT_PUBLIC_TURN_URL) {

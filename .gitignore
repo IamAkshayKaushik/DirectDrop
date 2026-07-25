@@ -1,5 +1,6 @@
 .claude/worktrees/
 .claude/
+.cursor/
 node_modules/
 .DS_Store
 .tokensave
@@ -7,3 +8,4 @@ node_modules/
 out/
 next-env.d.ts
 DirectDrop Design System/
+tsconfig.tsbuildinfo
