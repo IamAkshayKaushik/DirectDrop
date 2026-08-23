@@ -5,7 +5,7 @@ import type Peer from "peerjs";
 import type { DataConnection } from "peerjs";
 import QRCode from "qrcode";
 import utils from "@/lib/transfer-utils";
-import { createStreamDownload, type StreamWriter } from "@/lib/stream-download";
+import { createStreamDownload, probeStreamDownload, type StreamWriter } from "@/lib/stream-download";
 
 const {
   CHUNK_SIZE,
@@ -19,6 +19,8 @@ const {
 } = utils;
 
 const FILENAME_PREFIX = "bbb.";
+// Set by createOwnDirectDrop() before reload; consumed once to auto-enter drop mode as host.
+const AUTO_RECEIVE_KEY = "dd-auto-receive";
 
 export type ToastItem = { id: number; message: string; type: "success" | "error" | "info" };
 export type ChatMessage = { id: number; sender: "you" | "peer"; text: string };
@@ -64,6 +66,14 @@ export function useDirectDrop() {
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null);
   const [donateHint, setDonateHint] = useState(false);
   const [role, setRole] = useState<"host" | "guest" | null>(null);
+  // All reconnect attempts exhausted; drop-mode contributors have no PIN
+  // entry to fall back to, so they need an explicit retry affordance.
+  const [connectionLost, setConnectionLost] = useState(false);
+  const [dropMode, setDropMode] = useState(false);
+  const [dropRole, setDropRole] = useState<"host" | "contributor" | null>(null);
+  // Streaming-download support probe; null until known. Pessimistic default —
+  // show the manual-save hint until we've confirmed the SW path works.
+  const [streamOk, setStreamOk] = useState<boolean | null>(null);
 
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
@@ -410,6 +420,7 @@ export function useDirectDrop() {
 
   function enterConnectedUI(toastMsg: string) {
     setConnected(true);
+    setConnectionLost(false);
     setShowPinEntry(false);
     setShowShare(false);
     setShowHelp(false);
@@ -435,27 +446,66 @@ export function useDirectDrop() {
       const delay = delays[eng.reconnectAttempt];
       eng.reconnectAttempt++;
       showToast(`Reconnecting... attempt ${eng.reconnectAttempt}/3`, "info");
-
-      eng.reconnectTimer = setTimeout(() => {
-        const peer = peerRef.current;
-        if (!peer || peer.destroyed) return;
-        const conn = peer.connect(eng.remotePeerId!);
-        connRef.current = conn;
-        conn.on("open", () => {
-          eng.reconnectAttempt = 0;
-          enterConnectedUI("Reconnected!");
-        });
-        conn.on("data", handleData);
-        conn.on("close", handleConnClose);
-        conn.on("error", () => handleConnClose());
-      }, delay);
+      eng.reconnectTimer = setTimeout(() => attemptReconnect(handleConnClose), delay);
     } else {
       eng.reconnectAttempt = 0;
-      eng.remotePeerId = null;
-      showToast("Connection lost. Enter PIN to reconnect.", "error");
+      showToast("Connection lost.", "error");
+      setConnectionLost(true);
       setShowPinEntry(true);
       if (!eng.hasPeerParam && eng.fileQueue.length > 0) setShowShare(true);
     }
+  }
+
+  // Connects once to eng.remotePeerId. peer.connect() can hang forever with
+  // no open/close/error if the remote peer id is stale on the signaling
+  // server, so this always settles within ATTEMPT_TIMEOUT_MS via onFail.
+  const ATTEMPT_TIMEOUT_MS = 5000;
+  function attemptReconnect(onFail: () => void) {
+    const peer = peerRef.current;
+    if (!peer || peer.destroyed || !eng.remotePeerId) {
+      onFail();
+      return;
+    }
+    const conn = peer.connect(eng.remotePeerId);
+    connRef.current = conn;
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      onFail();
+    }, ATTEMPT_TIMEOUT_MS);
+    conn.on("open", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      eng.reconnectAttempt = 0;
+      enterConnectedUI("Reconnected!");
+    });
+    conn.on("data", handleData);
+    conn.on("close", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      onFail();
+    });
+    conn.on("error", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      onFail();
+    });
+  }
+
+  // Manual retry after reconnect attempts are exhausted — reuses the same
+  // target peer id so a drop-mode contributor (no PIN entry UI) can recover.
+  function retryConnection() {
+    if (!eng.remotePeerId) return;
+    setConnectionLost(false);
+    showToast("Reconnecting...", "info");
+    attemptReconnect(() => {
+      showToast("Connection lost.", "error");
+      setConnectionLost(true);
+    });
   }
 
   function handleInboundConnection(conn: DataConnection) {
@@ -473,9 +523,15 @@ export function useDirectDrop() {
   function handlePeerOpen(id: string) {
     setPin(id);
 
-    const peerIdParam = new URLSearchParams(window.location.search).get("peer");
+    const searchParams = new URLSearchParams(window.location.search);
+    const peerIdParam = searchParams.get("peer");
     eng.hasPeerParam = !!peerIdParam;
     if (peerIdParam) {
+      const isDrop = utils.parseDropModeMarker(searchParams.get("mode"));
+      if (isDrop) {
+        setDropMode(true);
+        setDropRole("contributor");
+      }
       setShowShare(false);
       setShowPinEntry(false);
       setShowHelp(false);
@@ -494,7 +550,7 @@ export function useDirectDrop() {
       connRef.current = conn;
       conn.on("open", () => {
         clearTimeout(connectTimeout);
-        history.replaceState(null, "", window.location.pathname);
+        history.replaceState(null, "", utils.buildDropPersistUrl(window.location.pathname, isDrop));
         eng.remotePeerId = peerIdParam;
         eng.reconnectAttempt = 0;
         setRole("guest");
@@ -514,7 +570,14 @@ export function useDirectDrop() {
         setShowPinEntry(true);
       });
     } else {
-      const link = `${window.location.origin}${window.location.pathname}?peer=${id}`;
+      const autoReceive = sessionStorage.getItem(AUTO_RECEIVE_KEY);
+      if (autoReceive) sessionStorage.removeItem(AUTO_RECEIVE_KEY);
+      const mode = autoReceive ? "drop" : null;
+      if (mode) {
+        setDropMode(true);
+        setDropRole("host");
+      }
+      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, mode);
       setShareUrl(link);
       setShowShare(true);
       QRCode.toDataURL(link, {
@@ -538,26 +601,6 @@ export function useDirectDrop() {
     const iceServers: RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
     ];
     // Set at build time, e.g. Metered/Open Relay or Cloudflare Realtime TURN.
     if (process.env.NEXT_PUBLIC_TURN_URL) {
@@ -605,6 +648,25 @@ export function useDirectDrop() {
       peerRef.current = null;
       connRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    probeStreamDownload()
+      .then(setStreamOk)
+      .catch(() => setStreamOk(false));
+  }, []);
+
+  // Warn before closing/reloading mid-transfer — a closed tab silently kills
+  // an in-flight WebRTC transfer with no way to resume.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!eng.isSending && !eng.isReceiving) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -747,7 +809,28 @@ export function useDirectDrop() {
     }
   }
 
+  // Turns the current generic share panel into an explicit "receive files"
+  // request: same PIN/peer, link now carries mode=drop.
+  function enterReceiveDropShare() {
+    if (!pin) return;
+    setDropMode(true);
+    setDropRole("host");
+    const link = utils.buildShareUrl(window.location.origin, window.location.pathname, pin, "drop");
+    setShareUrl(link);
+    QRCode.toDataURL(link, { width: 200, margin: 1, color: { dark: "#0A0A0B", light: "#ffffff" } })
+      .then(setQrDataUrl)
+      .catch(() => {});
+  }
+
+  // Reloads to a clean URL with a fresh PIN, auto-entering drop-mode host
+  // share once the new peer connects — the post-transfer viral CTA.
+  function createOwnDirectDrop() {
+    sessionStorage.setItem(AUTO_RECEIVE_KEY, "1");
+    window.location.href = window.location.pathname;
+  }
+
   const queueDrained = queue.length > 0 && queue.every((q) => q.status === "done");
+  const needsManualSaveHint = incoming !== null && streamOk !== true;
 
   return {
     pin,
@@ -764,11 +847,16 @@ export function useDirectDrop() {
     progress,
     receivingActive,
     incoming,
+    needsManualSaveHint,
     chat,
     toasts,
     log,
     manualDownload,
     role,
+    dropMode,
+    dropRole,
+    connectionLost,
+    retryConnection,
     donateHint,
     dismissDonate: () => setDonateHint(false),
     addFiles,
@@ -780,5 +868,7 @@ export function useDirectDrop() {
     cancelFileAt,
     copyPin,
     shareOrCopyLink,
+    enterReceiveDropShare,
+    createOwnDirectDrop,
   };
 }

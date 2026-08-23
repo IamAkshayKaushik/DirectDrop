@@ -1,5 +1,7 @@
+.agents/
 .claude/worktrees/
 .claude/
+.serena/
 .cursor/
 node_modules/
 .DS_Store
@@ -8,4 +10,3 @@ node_modules/
 out/
 next-env.d.ts
 DirectDrop Design System/
-tsconfig.tsbuildinfo

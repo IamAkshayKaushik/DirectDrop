@@ -12,6 +12,8 @@ export type StreamWriter = {
 };
 
 let swReady: Promise<ServiceWorker | null> | null = null;
+// Cached result of probeStreamDownload — null until first probe.
+let streamDownloadOk: boolean | null = null;
 
 function getWorker(): Promise<ServiceWorker | null> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
@@ -25,6 +27,23 @@ function getWorker(): Promise<ServiceWorker | null> {
       .catch(() => null);
   }
   return swReady;
+}
+
+/** Sync gate: browser exposes service workers (required for streaming path). */
+export function isStreamDownloadSupported(): boolean {
+  return typeof navigator !== "undefined" && "serviceWorker" in navigator;
+}
+
+/** Probes whether the SW streaming path actually works; result is cached. */
+export async function probeStreamDownload(): Promise<boolean> {
+  if (streamDownloadOk !== null) return streamDownloadOk;
+  if (!isStreamDownloadSupported()) {
+    streamDownloadOk = false;
+    return false;
+  }
+  const sw = await getWorker();
+  streamDownloadOk = sw !== null;
+  return streamDownloadOk;
 }
 
 export async function createStreamDownload(filename: string, size: number): Promise<StreamWriter | null> {

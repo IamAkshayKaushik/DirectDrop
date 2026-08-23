@@ -58,6 +58,7 @@ const toastIcons = {
 
 export default function Home() {
   const dd = useDirectDrop();
+  const isDropContributor = dd.dropMode && dd.dropRole === "contributor";
   const [pinValue, setPinValue] = useState("");
   const [chatValue, setChatValue] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -80,12 +81,13 @@ export default function Home() {
 
   // Celebrate each completed transfer: confetti burst + a haptic tap on mobile.
   useEffect(() => {
+    if (isDropContributor) return;
     if (dd.log.length > prevLogLen.current) {
       setCelebrate((c) => c + 1);
       navigator.vibrate?.(60);
     }
     prevLogLen.current = dd.log.length;
-  }, [dd.log.length]);
+  }, [dd.log.length, isDropContributor]);
 
   useEffect(() => {
     setIsTouch(navigator.maxTouchPoints > 0);
@@ -192,7 +194,11 @@ export default function Home() {
         </div>
       )}
 
-      <main className="bg-surface border border-hairline p-4 sm:p-8 rounded-3xl shadow-2xl max-w-5xl w-full transition-all duration-300 min-h-[80vh] flex flex-col">
+      <main
+        className={`bg-surface border border-hairline p-4 sm:p-8 rounded-3xl shadow-2xl w-full transition-all duration-300 min-h-[80vh] flex flex-col ${
+          isDropContributor ? "max-w-lg" : "max-w-5xl"
+        }`}
+      >
         <header className="text-left mb-8">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
@@ -202,15 +208,31 @@ export default function Home() {
                 </svg>
               </div>
               <div>
-                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
-                  Peer-to-peer file transfer
-                </p>
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
-                  DirectDrop
-                </h1>
-                <p className="text-base text-text-muted mt-1.5 font-medium">
-                  Fast, secure browser-to-browser file transfer
-                </p>
+                {isDropContributor ? (
+                  <>
+                    <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
+                      DirectDrop
+                    </p>
+                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
+                      Choose files to send
+                    </h1>
+                    <p className="text-sm text-text-muted mt-1.5">
+                      Encrypted browser-to-browser — nothing is uploaded to a server.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1.5">
+                      Peer-to-peer file transfer
+                    </p>
+                    <h1 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.02] text-text">
+                      DirectDrop
+                    </h1>
+                    <p className="text-base text-text-muted mt-1.5 font-medium">
+                      Fast, secure browser-to-browser file transfer
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             <button
@@ -230,28 +252,61 @@ export default function Home() {
               )}
             </button>
           </div>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-text-muted mb-4">
-            <span className="inline-flex items-center gap-1">
-              <svg className="w-3.5 h-3.5 text-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              End-to-end encrypted
-            </span>
-            <span className="text-text-subtle" aria-hidden="true">·</span>
-            <span>No size limits</span>
-            <span className="text-text-subtle" aria-hidden="true">·</span>
-            <span>No servers, no signups</span>
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-text-muted">No install. No account. Files stay between you.</span>
-          </div>
+          {!isDropContributor && (
+            <>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-text-muted mb-4">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  End-to-end encrypted
+                </span>
+                <span className="text-text-subtle" aria-hidden="true">·</span>
+                <span>No size limits</span>
+                <span className="text-text-subtle" aria-hidden="true">·</span>
+                <span>No servers, no signups</span>
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs text-text-muted">No install. No account. Files stay between you.</span>
+              </div>
+            </>
+          )}
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 flex-1">
+        <div className={`grid gap-4 sm:gap-8 flex-1 ${isDropContributor ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
           {/* Left Column: Connect, File Input, Queue */}
-          <div className="flex flex-col order-2 md:order-1">
+          <div className={`flex flex-col ${isDropContributor ? "" : "order-2 md:order-1"}`}>
+            {isDropContributor && dd.showSpinner && (
+              <div className="mb-4 p-4 bg-surface rounded-2xl border border-hairline shadow-sm" role="status">
+                <div className="flex items-center justify-center gap-3 py-1">
+                  <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm font-medium text-text-muted">Connecting…</span>
+                </div>
+              </div>
+            )}
+            {isDropContributor && dd.connected && (
+              <div className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-success" role="status">
+                <span className="w-2 h-2 rounded-full bg-success" aria-hidden="true" />
+                Connected — ready to send
+              </div>
+            )}
+            {isDropContributor && dd.connectionLost && (
+              <div className="mb-4 p-4 bg-error-wash border border-error/30 rounded-2xl flex items-center justify-between gap-3" role="status">
+                <p className="text-sm font-medium text-text">Connection lost.</p>
+                <button
+                  type="button"
+                  onClick={dd.retryConnection}
+                  className="shrink-0 bg-interactive hover:bg-interactive-hover text-text-invert text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             {/* Connect to a peer */}
-            {dd.showPinEntry && (
+            {dd.showPinEntry && !isDropContributor && (
               <div className="mb-6 p-4 rounded-2xl border border-dashed border-hairline">
                 <label htmlFor="pinInput" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">
                   Have a PIN? Enter it to connect
@@ -292,9 +347,9 @@ export default function Home() {
                     (document.getElementById("fileInput") as HTMLInputElement | null)?.click();
                   }
                 }}
-                className={`flex flex-col items-center justify-center w-full h-52 sm:h-60 border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive transition-all duration-200 group ${
-                  dragActive ? "border-interactive bg-interactive-wash scale-[1.02]" : "border-hairline-strong"
-                }`}
+                className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive transition-all duration-200 group ${
+                  isDropContributor ? "h-64 sm:h-72" : "h-52 sm:h-60"
+                } ${dragActive ? "border-interactive bg-interactive-wash scale-[1.02]" : "border-hairline-strong"}`}
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
                   <div className="p-4 bg-surface rounded-full shadow-md ring-1 ring-hairline mb-4 group-hover:scale-110 transition-all duration-200">
@@ -309,9 +364,17 @@ export default function Home() {
                     </svg>
                   </div>
                   <p className="mb-1 text-base font-semibold text-text">
-                    {isTouch ? "Tap to select files" : "Click to select files"}
+                    {isDropContributor
+                      ? isTouch
+                        ? "Tap to choose files"
+                        : "Choose files to send"
+                      : isTouch
+                        ? "Tap to select files"
+                        : "Click to select files"}
                   </p>
-                  <p className="text-sm text-text-muted hidden sm:block">or drop them anywhere on this page</p>
+                  {!isDropContributor && (
+                    <p className="text-sm text-text-muted hidden sm:block">or drop them anywhere on this page</p>
+                  )}
                 </div>
                 <input
                   id="fileInput"
@@ -389,7 +452,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                {dd.queueDrained && (
+                {dd.queueDrained && !isDropContributor && (
                   <div className="flex items-center justify-center space-x-2 text-text-muted text-xs py-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -399,9 +462,71 @@ export default function Home() {
                 )}
               </div>
             )}
+
+            {isDropContributor && dd.queueDrained && (
+              <div className="mb-6 p-5 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
+                <p className="text-sm font-semibold text-text mb-1">All files sent</p>
+                <p className="text-xs text-text-muted mb-4">
+                  Need files on this device too? Start your own DirectDrop.
+                </p>
+                <button
+                  type="button"
+                  onClick={dd.createOwnDirectDrop}
+                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
+                >
+                  Create your own DirectDrop
+                </button>
+                {DONATE_URL && (
+                  <p className="text-xs text-text-muted mt-3 text-center">
+                    <a
+                      href={DONATE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-text"
+                    >
+                      Support DirectDrop
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isDropContributor && dd.progress && (
+              <div className="mb-6 w-full bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
+                <div className="flex justify-between items-end mb-2 gap-2">
+                  <span className="text-sm font-semibold text-text truncate">
+                    Sending <span className="text-interactive">{dd.progress.filename}</span>
+                  </span>
+                  <span className="text-xs font-medium text-text-muted bg-surface-hover px-2 py-1 rounded-md whitespace-nowrap">
+                    {dd.progress.eta}
+                  </span>
+                </div>
+                <div
+                  className="w-full bg-surface-hover rounded-full h-2.5 mb-2 overflow-hidden"
+                  role="progressbar"
+                  aria-valuenow={Math.round(dd.progress.pct)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`Sending ${dd.progress.filename}`}
+                >
+                  <div
+                    className="bg-interactive h-2.5 rounded-full transition-all duration-300 relative"
+                    style={{ width: `${dd.progress.pct}%` }}
+                  >
+                    <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs text-text-muted mt-1">
+                  <span className="font-medium">{dd.progress.speed}</span>
+                  <span className="font-semibold text-text">{Math.round(dd.progress.pct)}%</span>
+                  <span className="text-text-muted">{dd.progress.sizeText}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Share, Status, Chat, Progress */}
+          {/* Right Column: Share, Status, Chat, Progress — hidden for drop contributor */}
+          {!isDropContributor && (
           <div className="flex flex-col h-full order-1 md:order-2">
             {/* Skeleton reserving the share panel's slot until the PIN arrives — avoids layout shift */}
             {!dd.pin && !dd.showSpinner && !dd.connected && (
@@ -417,10 +542,30 @@ export default function Home() {
               </div>
             )}
 
-            {/* Share panel: your PIN, link, QR */}
+            {/* Share panel: PIN, link, QR — generic or receive-first when dropMode */}
             {dd.showShare && (
               <div id="share" className="mb-6 bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
-                <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Your PIN — share it</p>
+                {!dd.dropMode && (
+                  <button
+                    type="button"
+                    onClick={dd.enterReceiveDropShare}
+                    className="w-full mb-4 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
+                  >
+                    Receive files
+                  </button>
+                )}
+                <p
+                  className={`text-xs font-bold uppercase tracking-wider mb-2 ${
+                    dd.dropMode ? "text-interactive tracking-[0.18em]" : "text-text-muted"
+                  }`}
+                >
+                  {dd.dropMode ? "Receive files" : "Your PIN — share it"}
+                </p>
+                {dd.dropMode && (
+                  <p className="text-sm text-text-muted mb-3 leading-relaxed">
+                    Scan or share this link to send files to this device.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={onCopyPin}
@@ -468,7 +613,7 @@ export default function Home() {
                 )}
                 <div className="mt-3 flex items-center gap-2 text-xs text-text-muted" role="status">
                   <span className="inline-block w-2 h-2 rounded-full bg-interactive animate-pulse" aria-hidden="true" />
-                  Waiting for someone to connect…
+                  {dd.dropMode ? "Waiting for someone to send files…" : "Waiting for someone to connect…"}
                 </div>
               </div>
             )}
@@ -564,6 +709,20 @@ export default function Home() {
               </div>
             )}
 
+            {/* Viral CTA after a successful transfer on the generic (non-drop) flow */}
+            {!isDropContributor && dd.donateHint && (
+              <div className="mb-3 p-4 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
+                <p className="text-sm font-semibold text-text mb-3">Need to send or receive more files?</p>
+                <button
+                  type="button"
+                  onClick={dd.createOwnDirectDrop}
+                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+                >
+                  Create your own DirectDrop
+                </button>
+              </div>
+            )}
+
             {/* Donation prompt after a successful transfer */}
             {DONATE_URL && dd.donateHint && (
               <div className="mb-6 p-4 bg-warning-wash border border-warning/30 rounded-2xl flex items-start gap-3 animate-fade-in">
@@ -629,6 +788,12 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
+                {dd.needsManualSaveHint && (
+                  <p className="text-xs text-text-muted mb-3 leading-relaxed">
+                    You may need to tap <span className="font-semibold text-text">Save</span> after the transfer to
+                    keep the file.
+                  </p>
+                )}
                 <div className="flex space-x-3 mt-4">
                   <button
                     onClick={dd.acceptIncoming}
@@ -703,10 +868,12 @@ export default function Home() {
               </>
             )}
           </div>
+          )}
         </div>
       </main>
 
       {/* Crawlable FAQ — native <details>, no JS. Mirrored as FAQPage JSON-LD. */}
+      {!isDropContributor && (
       <section id="faq" className="max-w-5xl w-full mt-8 px-2 sm:px-0" aria-labelledby="faq-heading">
         <h2 id="faq-heading" className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3">
           Frequently asked questions
@@ -734,7 +901,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+      )}
 
+      {!isDropContributor && (
       <p className="mt-6 mb-2 text-xs text-text-muted">
         Free forever
         {DONATE_URL && (
@@ -751,9 +920,10 @@ export default function Home() {
           </>
         )}
       </p>
+      )}
 
       {/* Confetti burst on each completed transfer — pure CSS, remounts per celebration */}
-      {celebrate > 0 && (
+      {!isDropContributor && celebrate > 0 && (
         <div key={celebrate} className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center" aria-hidden="true">
           {Array.from({ length: 18 }).map((_, i) => {
             const angle = (i / 18) * 2 * Math.PI;
