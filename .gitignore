@@ -1,5 +1,12 @@
+.agents/
 .claude/worktrees/
 .claude/
+.serena/
+.cursor/
 node_modules/
 .DS_Store
 .tokensave
+.next/
+out/
+next-env.d.ts
+DirectDrop Design System/

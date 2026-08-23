@@ -4,53 +4,63 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DirectDrop is a peer-to-peer file transfer web app using WebRTC (via PeerJS). It's a zero-build, zero-dependency static site — no npm, no bundler, no framework. Files transfer directly between browsers using chunked streaming over WebRTC data channels.
+DirectDrop is a peer-to-peer file transfer web app using WebRTC (via PeerJS). It's a Next.js app (App Router, static export) — fully client-side, no API routes, no server rendering in production. Files transfer directly between browsers using chunked streaming over WebRTC data channels.
 
 ## Development
 
-**Run dev server:** `python3 -m http.server 8000` (or `npx serve -l 8000`)
+**Dev server:** `npm run dev`
 
-**Lint (optional):** `npx eslint app.js`
+**Build (static export):** `npm run build` → static site in `out/`, servable from any static host
 
-**Testing:** Manual multi-tab browser testing — open two tabs, connect via PIN or share link, transfer files both ways. No automated test suite exists.
+**Type check:** `npx tsc --noEmit`
+
+**Tests:** `npm test` (node --test on pure helpers)
+
+**Manual testing:** Open two tabs, connect via PIN or share link, transfer files both ways.
 
 ## Architecture
 
-The entire app is three files:
-
-- **`index.html`** — Layout and structure. Loads Tailwind via CDN, PeerJS (v1.5.2) and QRCode.js (v1.0.0) from CDN. Contains inline drag-and-drop event wiring.
-- **`app.js`** — All application logic in a single DOMContentLoaded closure. Handles PeerJS connection setup, chunked file transfer (16KB chunks via `Blob.slice`), file queue management, chat messaging, and transfer analytics (speed/ETA).
-- **`styles.css`** — Pre-built Tailwind CSS output plus custom QR code styles. Tailwind utility classes in HTML come from the CDN `<script>` tag, not this file.
+- **`app/page.tsx`** — Main UI, a single client component. Markup only; all logic comes from the hook.
+- **`hooks/useDirectDrop.ts`** — The engine. PeerJS connection lifecycle, chunked file transfer (64KB chunks, 8-chunk pipeline window via `Blob.slice`), file queue, chat, reconnect with backoff, toasts. Imperative transfer state lives in refs; UI state in React state.
+- **`lib/transfer-utils.js`** — Pure helpers (chunk math, size/ETA formatting, PIN generation/validation). Plain JS so `node --test` runs it without a build step.
+- **`app/globals.css`** — Tailwind 4 import plus custom keyframes (fade-in, confetti) and scrollbar styles. Holds the full design-system token map and the `@theme` block that exposes them as Tailwind colors.
+- **`public/`** — `manifest.json` (PWA), `icon.svg`, `_headers` (Cloudflare Pages/Netlify headers).
 
 ### Connection Flow
 
-1. Sender opens the app → `initializePeerConnection()` generates a random 6-digit PIN as the PeerJS ID
-2. Sender selects files → share link with `?peer=<PIN>` is displayed along with a QR code
-3. Receiver opens the link → `handlePeerOpen()` detects the `peer` query param and connects via `peer.connect(peerIdParam)`
-4. Connection established → chat becomes visible, file transfer begins
+1. App loads → `useDirectDrop` creates a PeerJS `Peer` with a random 6-digit PIN as its ID
+2. Sender shares the PIN, the `?peer=<PIN>` link, or the QR code
+3. Receiver opens the link (auto-connect) or types the PIN
+4. Connection established → chat becomes visible, queued files start sending
 
 ### Transfer Protocol
 
 Files are sent one at a time from a queue. For each file:
-1. Sender sends filename (`bbb.<name>`) then chunk count (`size:<n>`)
+1. Sender sends filename (`bbb.<name>`), byte size (`bytes:<n>`), then chunk count (`size:<n>`)
 2. Receiver sees accept/reject prompt
-3. On accept, receiver sends `"next"` → sender sends one chunk as `{index, data: ArrayBuffer}`
-4. Receiver stores chunk, sends `"next"` for the next one (pull-based flow)
-5. Sender sends `"done"` when complete → receiver assembles blob and triggers download
-6. Receiver sends `"file_received"` → sender moves to next file in queue
-7. After all files: sender sends `"all_done"`
+3. On accept, receiver sends `"next"` per chunk (pull-based); sender keeps up to 8 chunks in flight as `{index, data: ArrayBuffer}`
+4. Sender sends `"done"` → receiver assembles blob and triggers download
+5. Receiver sends `"file_received"` → sender moves to next file; `"all_done"` after the queue drains
 
 Chat messages use `{type: "chat", text}` objects on the same data channel.
 
 ## Code Style
 
-- Vanilla ES6+ JavaScript, no modules or imports
-- Event-driven architecture with PeerJS callbacks
-- Tailwind utility classes for styling (via CDN script tag in HTML)
-- Teal/Slate color palette with glassmorphism design
+- TypeScript for app/hook code; `lib/transfer-utils.js` stays plain JS (test-runner compatibility)
+- Tailwind utility classes; orange-red-on-near-black design system (inspired by rig.ai) — flat surfaces, hairline borders, semantic color tokens (`bg-surface`, `text-text-muted`, `border-hairline`, `text-interactive`, etc.) defined in `app/globals.css`. Dark is the default theme; light is a first-class opt-in via the existing toggle.
+- Inter (sans) + JetBrains Mono (code) via Google Fonts. Display type is Inter 700–800 with tight tracking (-0.03em); eyebrow labels are uppercase 12px in `--interactive` with 0.18em tracking.
+- No DOM manipulation — state drives the UI
+
+## Design system
+
+The full brand spec lives in `/DirectDrop Design System/` (read `README.md` for philosophy, then `tokens/`, `guidelines/`, `components/`, `ui_kits/`). It is the source of truth for visual decisions; `app/globals.css` is the implementation. Three rules keep them in sync:
+
+1. **Never invent new color, type, or spacing values.** Use the existing semantic tokens (`bg-interactive`, `text-text-muted`, `border-hairline-strong`, `font-sans`, `font-mono`, etc.). New tokens go in both the design system tokens and the app's `:root` / `.dark` blocks.
+2. **Never rename a token without updating both files.** The class names (`bg-surface`, `text-interactive`, etc.) and the CSS variable names (`--surface`, `--interactive`) are public contracts. Renames are a design-system change, not a refactor.
+3. **Eyebrows are always in `--interactive`, always uppercase, always tracked.** That's the rig.ai rhythm that gives the brand its confidence.
 
 ## Boundaries
 
-- **Always do:** Preserve chunked `Blob.slice` streaming — never load entire files into memory. Keep the Teal/Slate glassmorphism design palette.
-- **Ask first:** Adding new external JS dependencies. Changing the PeerJS signaling server config.
-- **Never do:** Load entire files into memory for transfer. Use browser `alert()` popups.
+- **Always do:** Preserve chunked `Blob.slice` streaming — never load entire files into memory to send. Keep the orange-red flat design system (hairline borders, no translucency/blur on content containers — glass/blur is reserved for fixed chrome over scrolling content, like the full-page drag overlay). The single warm radial wash on the hero is the only ambient layer.
+- **Ask first:** Adding new runtime dependencies. Changing the PeerJS signaling server config. Adding new design-system tokens (extend the existing scale, don't fork).
+- **Never do:** Render peer-controlled strings with `dangerouslySetInnerHTML`. Use browser `alert()` popups. Add server-side file handling. Add a second accent color — the orange-red is the only signal color.

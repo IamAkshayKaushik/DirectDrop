@@ -1,0 +1,240 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* Manual theme toggle: dark is the default (no .dark class needed).
+   Adding .dark swaps to the warm-light variant. The init script in
+   layout.tsx controls whether .dark is applied at boot. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* DirectDrop Design System — inspired by rig.ai.
+   Dark-first: deep near-black canvas with a vibrant orange-red accent.
+   Every component class (bg-surface, text-text-muted, border-hairline,
+   bg-interactive, …) maps to one of these tokens, so re-skinning is a
+   pure value swap — no class changes needed in page.tsx. */
+:root {
+  /* Neutral canvas ramp — deep, slightly warm grays (no blue cast) */
+  --gray-0: #0A0A0B;
+  --gray-1: #0F0F11;
+  --gray-2: #141417;
+  --gray-3: #1C1C20;
+  --gray-4: #26262B;
+  --gray-9: #6B6B74;
+  --gray-10: #9A9AA3;
+  --gray-12: #EDEDF0;
+
+  /* Vibrant orange-red ramp — the rig.ai accent.
+     500 is the brand; 600 is the hover; 50/10 is the wash; 500/35 is the ring. */
+  --orange-50:  #FFF1EA;
+  --orange-100: #FFDBC8;
+  --orange-300: #FF9966;
+  --orange-400: #FF7A3D;
+  --orange-500: #FF5A1F;
+  --orange-600: #E84A12;
+  --orange-700: #C23A08;
+  --orange-a10: rgba(255, 90, 31, 0.10);
+  --orange-a14: rgba(255, 90, 31, 0.14);
+  --orange-a22: rgba(255, 90, 31, 0.22);
+
+  /* Semantic surfaces (dark canvas) */
+  --bg: var(--gray-0);
+  --surface: var(--gray-1);
+  --surface-elevated: var(--gray-2);
+  --surface-hover: var(--gray-3);
+  --surface-code: var(--gray-2);
+
+  --hairline: rgba(255, 255, 255, 0.07);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+
+  --text: var(--gray-12);
+  --text-muted: var(--gray-10);
+  --text-subtle: var(--gray-9);
+  --text-invert: #0A0A0B;
+
+  --interactive: var(--orange-500);
+  --interactive-hover: var(--orange-600);
+  --interactive-wash: var(--orange-a10);
+  --focus-ring: rgba(255, 90, 31, 0.45);
+  --selection-bg: rgba(255, 90, 31, 0.28);
+
+  --success: #3EB489;
+  --success-wash: rgba(62, 180, 137, 0.14);
+  --warning: #D9A344;
+  --warning-wash: rgba(217, 163, 68, 0.14);
+  --error: #E5646E;
+  --error-wash: rgba(229, 100, 110, 0.14);
+
+  /* Deeper shadows for dark surfaces — light shadow looks wrong on near-black */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --glow-accent: 0 0 32px rgba(255, 90, 31, 0.18);
+
+  color-scheme: dark;
+}
+
+/* Light variant — opt-in via the theme toggle. Same orange accent, but on
+   a warm-near-white canvas. Keeps every semantic token name identical. */
+.dark {
+  --gray-0: #FAF7F5;
+  --gray-1: #FFFFFF;
+  --gray-2: #FFFFFF;
+  --gray-3: #F2EEEA;
+  --gray-4: #E8E1DA;
+  --gray-9: #8A847D;
+  --gray-10: #5F5A55;
+  --gray-12: #1B1816;
+
+  --orange-a10: rgba(232, 74, 18, 0.10);
+  --orange-a14: rgba(232, 74, 18, 0.14);
+  --orange-a22: rgba(232, 74, 18, 0.22);
+
+  --surface-code: #F7F3EF;
+
+  --hairline: rgba(27, 24, 22, 0.08);
+  --hairline-strong: rgba(27, 24, 22, 0.16);
+  --text-invert: #FFFFFF;
+
+  --focus-ring: rgba(232, 74, 18, 0.45);
+  --selection-bg: rgba(232, 74, 18, 0.18);
+
+  --success: #1E8E68;
+  --success-wash: rgba(62, 180, 137, 0.12);
+  --warning: #A87A22;
+  --warning-wash: rgba(217, 163, 68, 0.12);
+  --error: #C93E4A;
+  --error-wash: rgba(229, 100, 110, 0.12);
+
+  --shadow-1: 0 1px 2px rgba(27, 24, 22, 0.06);
+  --shadow-2: 0 4px 16px rgba(27, 24, 22, 0.08), 0 1px 3px rgba(27, 24, 22, 0.05);
+  --shadow-3: 0 16px 48px rgba(27, 24, 22, 0.16), 0 4px 12px rgba(27, 24, 22, 0.08);
+  --glow-accent: 0 0 32px rgba(232, 74, 18, 0.12);
+
+  color-scheme: light;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--text);
+}
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 24px;
+
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-1);
+  --shadow-lg: var(--shadow-2);
+  --shadow-2xl: var(--shadow-3);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-code: var(--surface-code);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-invert: var(--text-invert);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
+  --color-interactive-wash: var(--interactive-wash);
+  --color-success: var(--success);
+  --color-success-wash: var(--success-wash);
+  --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-error: var(--error);
+  --color-error-wash: var(--error-wash);
+}
+
+/* Chat bubble / queue item entrance */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+
+/* Donation-prompt heart — a small reward beat after a successful transfer */
+@keyframes pop-in {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+/* Transfer-complete confetti — rig.ai palette: orange-red dominant with cool counterpoints */
+@keyframes confetti {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), calc(var(--ty) + 120px)) rotate(540deg) scale(0.4);
+    opacity: 0;
+  }
+}
+.confetti-particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti 0.9s cubic-bezier(0.25, 0.8, 0.5, 1) both;
+}
+
+/* Thin scrollbar for the queue list */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Keyboard focus ring on all interactive elements */
+button:focus-visible,
+a:focus-visible,
+label:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-pulse,
+  .animate-spin,
+  .animate-pop-in {
+    animation: none;
+  }
+  /* Hide entirely: without the animation the particles would sit visible at center */
+  .confetti-particle {
+    display: none;
+  }
+}

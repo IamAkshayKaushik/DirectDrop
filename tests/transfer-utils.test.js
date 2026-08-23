@@ -14,7 +14,10 @@ const {
   shouldThrottleUpdate,
   CHUNK_SIZE,
   PIPELINE_WINDOW,
-} = require("../transfer-utils.js");
+  parseDropModeMarker,
+  buildShareUrl,
+  buildDropPersistUrl,
+} = require("../lib/transfer-utils.js");
 
 // ── formatFileSize ──────────────────────────────────────────────────────────
 
@@ -327,6 +330,53 @@ describe("shouldThrottleUpdate", () => {
   it("0 bytes — throttles if started immediately", () => {
     // 0 < 1000, and now - last < 500
     assert.equal(shouldThrottleUpdate(100, 50, 0, 1000), true);
+  });
+});
+
+// ── parseDropModeMarker / buildShareUrl / buildDropPersistUrl ───────────────
+
+describe("parseDropModeMarker", () => {
+  it("accepts mode=drop", () => {
+    assert.equal(parseDropModeMarker("drop"), true);
+  });
+  it("rejects absent mode", () => {
+    assert.equal(parseDropModeMarker(null), false);
+    assert.equal(parseDropModeMarker(undefined), false);
+    assert.equal(parseDropModeMarker(""), false);
+  });
+  it("rejects junk mode", () => {
+    assert.equal(parseDropModeMarker("send"), false);
+    assert.equal(parseDropModeMarker("DROP"), false);
+  });
+});
+
+describe("buildShareUrl", () => {
+  const origin = "http://localhost:3000";
+  const path = "/";
+  const pin = "123456";
+
+  it("builds plain peer link without mode", () => {
+    assert.equal(buildShareUrl(origin, path, pin), `${origin}${path}?peer=${pin}`);
+    assert.equal(buildShareUrl(origin, path, pin, null), `${origin}${path}?peer=${pin}`);
+  });
+  it("appends mode=drop when requested", () => {
+    const url = buildShareUrl(origin, path, pin, "drop");
+    const q = new URL(url).searchParams;
+    assert.equal(q.get("peer"), pin);
+    assert.equal(q.get("mode"), "drop");
+  });
+  it("ignores junk mode", () => {
+    const url = buildShareUrl(origin, path, pin, "nope");
+    assert.equal(new URL(url).searchParams.get("mode"), null);
+  });
+});
+
+describe("buildDropPersistUrl", () => {
+  it("returns pathname only when not drop", () => {
+    assert.equal(buildDropPersistUrl("/", false), "/");
+  });
+  it("keeps mode=drop after peer stripped", () => {
+    assert.equal(buildDropPersistUrl("/", true), "/?mode=drop");
   });
 });
 
