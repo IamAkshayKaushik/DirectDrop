@@ -108,7 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="bg-bg min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 font-sans text-text antialiased">
+      <body className="bg-bg min-h-screen flex flex-col items-center p-2 sm:p-4 font-sans text-text antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         {children}
       </body>
