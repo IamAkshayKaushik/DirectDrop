@@ -36,7 +36,14 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   manifest: "/manifest.json",
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -89,10 +96,9 @@ const structuredData = [
 const themeInitScript = `(function () {
   try {
     var stored = localStorage.getItem("theme");
-    // Dark-first: stored value wins; otherwise default to dark (the rig.ai
-    // aesthetic is designed around a near-black canvas).
-    var isDark = stored ? stored === "dark" : true;
-    document.documentElement.classList.toggle("dark", isDark);
+    // Dark-first: the .dark CSS class actually applies the warm-LIGHT
+    // variant (see globals.css) — only add it when light was chosen.
+    document.documentElement.classList.toggle("dark", stored === "light");
   } catch (e) {}
 })();`;
 

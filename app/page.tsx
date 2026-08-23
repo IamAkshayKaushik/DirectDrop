@@ -91,13 +91,14 @@ export default function Home() {
 
   useEffect(() => {
     setIsTouch(navigator.maxTouchPoints > 0);
-    setIsDark(document.documentElement.classList.contains("dark"));
+    // .dark class = warm-light variant (see globals.css); dark is default.
+    setIsDark(!document.documentElement.classList.contains("dark"));
   }, []);
 
   function toggleTheme() {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    document.documentElement.classList.toggle("dark", !next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }
 
@@ -239,7 +240,7 @@ export default function Home() {
               type="button"
               onClick={toggleTheme}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="shrink-0 p-2 rounded-lg text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
+              className="shrink-0 p-3 rounded-lg text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
             >
               {isDark ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -466,18 +467,8 @@ export default function Home() {
             {isDropContributor && dd.queueDrained && (
               <div className="mb-6 p-5 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
                 <p className="text-sm font-semibold text-text mb-1">All files sent</p>
-                <p className="text-xs text-text-muted mb-4">
-                  Need files on this device too? Start your own DirectDrop.
-                </p>
-                <button
-                  type="button"
-                  onClick={dd.createOwnDirectDrop}
-                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
-                >
-                  Create your own DirectDrop
-                </button>
                 {DONATE_URL && (
-                  <p className="text-xs text-text-muted mt-3 text-center">
+                  <p className="text-xs text-text-muted text-center">
                     <a
                       href={DONATE_URL}
                       target="_blank"
@@ -709,20 +700,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Viral CTA after a successful transfer on the generic (non-drop) flow */}
-            {!isDropContributor && dd.donateHint && (
-              <div className="mb-3 p-4 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
-                <p className="text-sm font-semibold text-text mb-3">Need to send or receive more files?</p>
-                <button
-                  type="button"
-                  onClick={dd.createOwnDirectDrop}
-                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
-                >
-                  Create your own DirectDrop
-                </button>
-              </div>
-            )}
-
             {/* Donation prompt after a successful transfer */}
             {DONATE_URL && dd.donateHint && (
               <div className="mb-6 p-4 bg-warning-wash border border-warning/30 rounded-2xl flex items-start gap-3 animate-fade-in">
@@ -797,13 +774,13 @@ export default function Home() {
                 <div className="flex space-x-3 mt-4">
                   <button
                     onClick={dd.acceptIncoming}
-                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-2.5 px-4 rounded-xl transition-all shadow-sm"
+                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-3 px-4 rounded-xl transition-all shadow-sm"
                   >
                     Accept
                   </button>
                   <button
                     onClick={dd.rejectIncoming}
-                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-2.5 px-4 rounded-xl transition-all"
+                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-3 px-4 rounded-xl transition-all"
                   >
                     Reject
                   </button>
@@ -859,7 +836,7 @@ export default function Home() {
                     />
                     <button
                       type="submit"
-                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-3 rounded-xl text-sm font-semibold transition-all shadow-sm"
                     >
                       Send
                     </button>

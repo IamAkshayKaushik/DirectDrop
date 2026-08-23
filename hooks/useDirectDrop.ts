@@ -19,8 +19,6 @@ const {
 } = utils;
 
 const FILENAME_PREFIX = "bbb.";
-// Set by createOwnDirectDrop() before reload; consumed once to auto-enter drop mode as host.
-const AUTO_RECEIVE_KEY = "dd-auto-receive";
 
 export type ToastItem = { id: number; message: string; type: "success" | "error" | "info" };
 export type ChatMessage = { id: number; sender: "you" | "peer"; text: string };
@@ -571,14 +569,7 @@ export function useDirectDrop() {
         setShowPinEntry(true);
       });
     } else {
-      const autoReceive = sessionStorage.getItem(AUTO_RECEIVE_KEY);
-      if (autoReceive) sessionStorage.removeItem(AUTO_RECEIVE_KEY);
-      const mode = autoReceive ? "drop" : null;
-      if (mode) {
-        setDropMode(true);
-        setDropRole("host");
-      }
-      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, mode);
+      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, null);
       setShareUrl(link);
       setShowShare(true);
       QRCode.toDataURL(link, {
@@ -840,13 +831,6 @@ export function useDirectDrop() {
       .catch(() => {});
   }
 
-  // Reloads to a clean URL with a fresh PIN, auto-entering drop-mode host
-  // share once the new peer connects — the post-transfer viral CTA.
-  function createOwnDirectDrop() {
-    sessionStorage.setItem(AUTO_RECEIVE_KEY, "1");
-    window.location.href = window.location.pathname;
-  }
-
   const queueDrained = queue.length > 0 && queue.every((q) => q.status === "done");
   const needsManualSaveHint = incoming !== null && streamOk !== true;
 
@@ -887,6 +871,5 @@ export function useDirectDrop() {
     copyPin,
     shareOrCopyLink,
     enterReceiveDropShare,
-    createOwnDirectDrop,
   };
 }
