@@ -77,6 +77,7 @@ export function useDirectDrop() {
 
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
+  const defaultTitleRef = useRef<string>("");
   const eng = useRef({
     fileQueue: [] as File[],
     currentFileIndex: 0,
@@ -538,7 +539,7 @@ export function useDirectDrop() {
       setSpinner(true);
 
       const connectTimeout = setTimeout(() => {
-        showToast("Connection timed out. Peer may be offline.", "error");
+        showToast("Couldn't connect — peer may be offline, or this network (mobile data, hotel/office Wi-Fi) may be blocking it.", "error");
         connRef.current?.close();
         connRef.current = null;
         setSpinner(false);
@@ -670,6 +671,23 @@ export function useDirectDrop() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Surface transfer progress in the tab title so it's visible when backgrounded.
+  useEffect(() => {
+    defaultTitleRef.current = document.title;
+  }, []);
+
+  useEffect(() => {
+    if (!progress) {
+      document.title = defaultTitleRef.current;
+      return;
+    }
+    const verb = progress.role === "send" ? "Sending" : "Receiving";
+    document.title = `(${Math.round(progress.pct)}%) ${verb} ${progress.filename}`;
+    return () => {
+      document.title = defaultTitleRef.current;
+    };
+  }, [progress]);
+
   // ---- actions exposed to the UI ----
 
   function addFiles(files: FileList | File[]) {
@@ -699,7 +717,7 @@ export function useDirectDrop() {
     setPinConnecting(true);
 
     const connectTimeout = setTimeout(() => {
-      showToast("Connection timed out. Peer may be offline.", "error");
+      showToast("Couldn't connect — peer may be offline, or this network (mobile data, hotel/office Wi-Fi) may be blocking it.", "error");
       setPinConnecting(false);
       connRef.current?.close();
       connRef.current = null;
