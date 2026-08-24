@@ -569,7 +569,9 @@ export function useDirectDrop() {
         setShowPinEntry(true);
       });
     } else {
-      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, null);
+      setDropMode(true);
+      setDropRole("host");
+      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, "drop");
       setShareUrl(link);
       setShowShare(true);
       QRCode.toDataURL(link, {
@@ -818,19 +820,6 @@ export function useDirectDrop() {
     }
   }
 
-  // Turns the current generic share panel into an explicit "receive files"
-  // request: same PIN/peer, link now carries mode=drop.
-  function enterReceiveDropShare() {
-    if (!pin) return;
-    setDropMode(true);
-    setDropRole("host");
-    const link = utils.buildShareUrl(window.location.origin, window.location.pathname, pin, "drop");
-    setShareUrl(link);
-    QRCode.toDataURL(link, { width: 200, margin: 1, color: { dark: "#0A0A0B", light: "#ffffff" } })
-      .then(setQrDataUrl)
-      .catch(() => {});
-  }
-
   const queueDrained = queue.length > 0 && queue.every((q) => q.status === "done");
   const needsManualSaveHint = incoming !== null && streamOk !== true;
 
@@ -870,6 +859,5 @@ export function useDirectDrop() {
     cancelFileAt,
     copyPin,
     shareOrCopyLink,
-    enterReceiveDropShare,
   };
 }

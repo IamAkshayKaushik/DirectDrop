@@ -556,34 +556,19 @@ export default function Home() {
               </div>
             )}
 
-            {/* Share panel: PIN, link, QR — generic or receive-first when dropMode */}
+            {/* Share panel: PIN, link, QR — always receive-first */}
             {dd.showShare && (
               <div
                 id="share"
                 className="mb-6 bg-surface p-5 sm:p-6 rounded-3xl border border-hairline"
                 style={{ boxShadow: "var(--shadow-2), var(--glow-accent)" }}
               >
-                {!dd.dropMode && (
-                  <button
-                    type="button"
-                    onClick={dd.enterReceiveDropShare}
-                    className="w-full mb-4 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
-                  >
-                    Receive files
-                  </button>
-                )}
-                <p
-                  className={`text-xs font-bold uppercase tracking-wider mb-2 ${
-                    dd.dropMode ? "text-interactive tracking-[0.18em]" : "text-text-muted"
-                  }`}
-                >
-                  {dd.dropMode ? "Receive files" : "Your PIN — share it"}
+                <p className="text-xs font-bold uppercase tracking-wider mb-2 text-interactive tracking-[0.18em]">
+                  Receive files
                 </p>
-                {dd.dropMode && (
-                  <p className="text-sm text-text-muted mb-3 leading-relaxed">
-                    Scan or share this link to send files to this device.
-                  </p>
-                )}
+                <p className="text-sm text-text-muted mb-3 leading-relaxed">
+                  Scan or share this link to send files to this device.
+                </p>
                 <button
                   type="button"
                   onClick={onCopyPin}
@@ -633,7 +618,7 @@ export default function Home() {
                 )}
                 <div className="mt-3 flex items-center gap-2 text-xs text-text-muted" role="status">
                   <span className="inline-block w-2 h-2 rounded-full bg-interactive animate-pulse" aria-hidden="true" />
-                  {dd.dropMode ? "Waiting for someone to send files…" : "Waiting for someone to connect…"}
+                  Waiting for someone to send files…
                 </div>
               </div>
             )}
