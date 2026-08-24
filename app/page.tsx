@@ -513,6 +513,27 @@ export default function Home() {
               </div>
             )}
 
+            {/* Pre-connection: how it works */}
+            {dd.showHelp && !isDropContributor && (
+              <div className="mt-2 p-5">
+                <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-4">How it works</h2>
+                <ol className="relative flex flex-col gap-5">
+                  <div className="absolute left-[15px] top-1 bottom-1 w-px bg-hairline-strong" aria-hidden="true" />
+                  {HOW_IT_WORKS.map(({ title, detail }, i) => (
+                    <li key={title} className="relative flex items-start gap-4">
+                      <span className="relative z-10 flex-shrink-0 w-8 h-8 rounded-full bg-surface border-2 border-interactive flex items-center justify-center text-xs font-bold text-interactive">
+                        {i + 1}
+                      </span>
+                      <div className="pt-1">
+                        <p className="text-sm font-semibold text-text">{title}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{detail}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
             {!isDropContributor && (
               <p className="mt-auto pt-6 text-xs text-text-subtle">No install. No account. Files stay between you.</p>
             )}
@@ -585,6 +606,8 @@ export default function Home() {
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
+                    id="shareUrl"
+                    name="shareUrl"
                     readOnly
                     value={dd.shareUrl}
                     aria-label="Share link"
@@ -623,27 +646,6 @@ export default function Home() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 <span className="text-sm font-medium text-text-muted">Connecting to peer...</span>
-              </div>
-            )}
-
-            {/* Pre-connection: how it works */}
-            {dd.showHelp && (
-              <div className="mb-6 p-5">
-                <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-4">How it works</h2>
-                <ol className="relative flex flex-col gap-5">
-                  <div className="absolute left-[15px] top-1 bottom-1 w-px bg-hairline-strong" aria-hidden="true" />
-                  {HOW_IT_WORKS.map(({ title, detail }, i) => (
-                    <li key={title} className="relative flex items-start gap-4">
-                      <span className="relative z-10 flex-shrink-0 w-8 h-8 rounded-full bg-surface border-2 border-interactive flex items-center justify-center text-xs font-bold text-interactive">
-                        {i + 1}
-                      </span>
-                      <div className="pt-1">
-                        <p className="text-sm font-semibold text-text">{title}</p>
-                        <p className="text-xs text-text-muted mt-0.5">{detail}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
               </div>
             )}
 
