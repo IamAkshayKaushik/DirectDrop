@@ -20,7 +20,15 @@ const {
 
 const FILENAME_PREFIX = "bbb.";
 
-export type ToastItem = { id: number; message: string; type: "success" | "error" | "info" };
+const TOAST_VISIBLE_MS = 4000;
+const TOAST_EXIT_MS = 200; // must match --duration-2 in app/globals.css
+
+export type ToastItem = {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+  exiting?: boolean;
+};
 export type ChatMessage = { id: number; sender: "you" | "peer"; text: string };
 export type QueueEntry = {
   index: number;
@@ -106,7 +114,12 @@ export function useDirectDrop() {
   function showToast(message: string, type: ToastItem["type"] = "info") {
     const id = ++nextId;
     setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+
+    // Visible 4s, then exit 200ms so the top-edge transition can play before unmount.
+    setTimeout(() => {
+      setToasts((t) => t.map((x) => (x.id === id ? { ...x, exiting: true } : x)));
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), TOAST_EXIT_MS);
+    }, TOAST_VISIBLE_MS);
   }
 
   function setSpinner(v: boolean) {

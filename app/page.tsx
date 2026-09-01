@@ -182,21 +182,25 @@ export default function Home() {
         }}
       />
 
-      {/* Full-page drop overlay */}
-      {dragActive && (
-        <div className="fixed inset-0 z-40 bg-interactive-wash backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <div className="m-4 px-10 py-8 bg-surface border-2 border-dashed border-interactive rounded-2xl shadow-2xl text-center animate-fade-in">
-            <svg className="w-10 h-10 text-interactive mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="text-lg font-bold text-text">Drop files to send</p>
-            <p className="text-sm text-text-muted mt-1">They go straight to your peer — nothing is uploaded</p>
-          </div>
+      {/* Full-page drop overlay — stays mounted so leave can fade, not snap */}
+      <div
+        className={`drag-overlay fixed inset-0 z-40 bg-interactive-wash flex items-center justify-center pointer-events-none ${
+          dragActive ? "backdrop-blur-sm" : ""
+        }`}
+        data-active={dragActive ? "" : undefined}
+        aria-hidden={!dragActive}
+      >
+        <div className="m-4 px-10 py-8 bg-surface border-2 border-dashed border-interactive rounded-2xl shadow-2xl text-center">
+          <svg className="w-10 h-10 text-interactive mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p className="text-lg font-bold text-text">Drop files to send</p>
+          <p className="text-sm text-text-muted mt-1">They go straight to your peer — nothing is uploaded</p>
         </div>
-      )}
+      </div>
 
       <main
-        className={`w-full transition-all duration-300 min-h-[80vh] flex flex-col px-4 sm:px-8 py-8 sm:py-10 ${
+        className={`w-full min-h-[80vh] flex flex-col px-4 sm:px-8 py-8 sm:py-10 ${
           isDropContributor ? "max-w-lg" : "max-w-5xl"
         }`}
       >
@@ -343,12 +347,12 @@ export default function Home() {
                     (document.getElementById("fileInput") as HTMLInputElement | null)?.click();
                   }
                 }}
-                className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive transition-all duration-200 group ${
+                className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive ${
                   isDropContributor ? "h-64 sm:h-72" : "h-52 sm:h-60"
                 } ${dragActive ? "border-interactive bg-interactive-wash scale-[1.02]" : "border-hairline-strong"}`}
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                  <div className="p-4 bg-surface rounded-full shadow-md ring-1 ring-hairline mb-4 group-hover:scale-110 transition-all duration-200">
+                  <div className="p-4 bg-surface rounded-full shadow-md ring-1 ring-hairline mb-4">
                     <svg className="w-8 h-8 text-interactive" aria-hidden="true" fill="none" viewBox="0 0 20 16">
                       <path
                         stroke="currentColor"
@@ -397,7 +401,7 @@ export default function Home() {
                         item.status === "sending"
                           ? "border-interactive bg-interactive-wash"
                           : "border-hairline bg-surface"
-                      } flex justify-between items-center transition-all`}
+                      } flex justify-between items-center transition-colors`}
                     >
                       <div className="flex items-center space-x-3 overflow-hidden">
                         <FileIcon
@@ -499,8 +503,8 @@ export default function Home() {
                   aria-label={`Sending ${dd.progress.filename}`}
                 >
                   <div
-                    className="bg-interactive h-2.5 rounded-full transition-all duration-300 relative"
-                    style={{ width: `${dd.progress.pct}%` }}
+                    className="progress-fill bg-interactive h-2.5 rounded-full relative"
+                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, dd.progress.pct)) / 100})` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
                   </div>
@@ -573,7 +577,7 @@ export default function Home() {
                   type="button"
                   onClick={onCopyPin}
                   title="Copy PIN"
-                  className={`group w-full text-center bg-surface-code border rounded-xl py-3 mb-4 transition-all ${
+                  className={`group w-full text-center bg-surface-code border rounded-xl py-3 mb-4 ${
                     pinCopied ? "border-interactive scale-[1.02]" : "border-hairline hover:border-interactive"
                   }`}
                 >
@@ -671,8 +675,8 @@ export default function Home() {
                   aria-label={`Transferring ${dd.progress.filename}`}
                 >
                   <div
-                    className="bg-interactive h-2.5 rounded-full transition-all duration-300 relative"
-                    style={{ width: `${dd.progress.pct}%` }}
+                    className="progress-fill bg-interactive h-2.5 rounded-full relative"
+                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, dd.progress.pct)) / 100})` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
                   </div>
@@ -686,7 +690,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={dd.cancelActiveReceive}
-                    className="mt-3 w-full bg-surface hover:bg-error-wash border border-error/30 text-error text-sm font-semibold py-2 px-4 rounded-xl transition-all"
+                    className="mt-3 w-full bg-surface hover:bg-error-wash border border-error/30 text-error text-sm font-semibold py-2 px-4 rounded-xl"
                   >
                     Cancel download
                   </button>
@@ -768,13 +772,13 @@ export default function Home() {
                 <div className="flex space-x-3 mt-4">
                   <button
                     onClick={dd.acceptIncoming}
-                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-3 px-4 rounded-xl transition-all shadow-sm"
+                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-3 px-4 rounded-xl shadow-sm"
                   >
                     Accept
                   </button>
                   <button
                     onClick={dd.rejectIncoming}
-                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-3 px-4 rounded-xl transition-all"
+                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-3 px-4 rounded-xl"
                   >
                     Reject
                   </button>
@@ -823,14 +827,14 @@ export default function Home() {
                       type="text"
                       value={chatValue}
                       onChange={(e) => setChatValue(e.target.value)}
-                      className="flex-1 min-w-0 bg-surface border border-hairline rounded-xl px-4 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-interactive/40 focus:border-interactive transition-all"
+                      className="flex-1 min-w-0 bg-surface border border-hairline rounded-xl px-4 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-interactive/40 focus:border-interactive transition-colors"
                       placeholder="Type a message..."
                       aria-label="Chat message"
                       autoComplete="off"
                     />
                     <button
                       type="submit"
-                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-3 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-3 rounded-xl text-sm font-semibold shadow-sm"
                     >
                       Send
                     </button>
@@ -920,7 +924,8 @@ export default function Home() {
           <div
             key={toast.id}
             role="status"
-            className={`flex items-center gap-2.5 p-4 rounded-xl border shadow-lg animate-fade-in text-sm font-medium ${
+            data-exiting={toast.exiting ? "" : undefined}
+            className={`toast-enter flex items-center gap-2.5 p-4 rounded-xl border shadow-lg text-sm font-medium ${
               toast.type === "success"
                 ? "bg-success border-success text-text-invert"
                 : toast.type === "error"

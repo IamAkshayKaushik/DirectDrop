@@ -69,6 +69,14 @@
   --shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
   --glow-accent: 0 0 32px rgba(255, 90, 31, 0.18);
 
+  /* Motion — same tokens as DirectDrop Design System/tokens/motion.css */
+  --duration-1: 120ms;
+  --duration-2: 200ms;
+  --duration-3: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --enter-distance: 8px;
+
   color-scheme: dark;
 }
 
@@ -154,31 +162,65 @@
   --color-error-wash: var(--error-wash);
 }
 
-/* Chat bubble / queue item entrance */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* Entrances: opacity + ≤8px rise. Transitions so bursty adds (queue, chat)
+   retarget; keyframes would restart from zero.
+
+     from  ·······  (invisible, 8px down)
+     to    -------  (settled) */
 .animate-fade-in {
-  animation: fade-in 0.25s ease-out;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--duration-2) var(--ease-out),
+    transform var(--duration-2) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(var(--enter-distance));
+  }
 }
 
-/* Donation-prompt heart — a small reward beat after a successful transfer */
+/* Top-anchored toasts enter the same edge they sit on. */
+.toast-enter {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--duration-2) var(--ease-out),
+    transform var(--duration-2) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+.toast-enter[data-exiting] {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.drag-overlay {
+  opacity: 0;
+  transition: opacity var(--duration-2) var(--ease-out);
+}
+
+.drag-overlay[data-active] {
+  opacity: 1;
+}
+
+/* Donation-prompt heart — rare delight after a successful transfer */
 @keyframes pop-in {
   0% {
-    transform: scale(0);
+    transform: scale(0.95);
+    opacity: 0;
   }
   60% {
     transform: scale(1.3);
+    opacity: 1;
   }
   100% {
     transform: scale(1);
+    opacity: 1;
   }
 }
 .animate-pop-in {
@@ -226,13 +268,65 @@ label:focus-visible,
   border-radius: 4px;
 }
 
+/* Press: confirm the interface heard you. Unlayered so it wins over
+   Tailwind transition-* utilities on the same elements. */
+button:not(:disabled) {
+  transition:
+    transform var(--duration-1) var(--ease-out),
+    color var(--duration-1) ease,
+    background-color var(--duration-1) ease,
+    border-color var(--duration-1) ease,
+    opacity var(--duration-1) ease,
+    box-shadow var(--duration-1) ease,
+    filter var(--duration-1) ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Dropzone: color + the dragActive scale, not a hover lift. */
+label[for="fileInput"] {
+  transition:
+    transform var(--duration-2) var(--ease-in-out),
+    background-color var(--duration-1) ease,
+    border-color var(--duration-1) ease;
+}
+
+.progress-fill {
+  width: 100%;
+  transform-origin: left center;
+  transition: transform var(--duration-2) linear;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
+  .toast-enter,
+  .toast-enter[data-exiting],
+  .drag-overlay {
+    transition: opacity 160ms ease;
+    transform: none;
+
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
+  .progress-fill {
+    transition: none;
+  }
+
+  button:not(:disabled):active {
+    transform: none;
+  }
+
+  .animate-pop-in,
   .animate-pulse,
-  .animate-spin,
-  .animate-pop-in {
+  .animate-spin {
     animation: none;
   }
+
   /* Hide entirely: without the animation the particles would sit visible at center */
   .confetti-particle {
     display: none;
