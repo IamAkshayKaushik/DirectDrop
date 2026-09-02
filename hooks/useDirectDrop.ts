@@ -19,10 +19,16 @@ const {
 } = utils;
 
 const FILENAME_PREFIX = "bbb.";
-// Set by createOwnDirectDrop() before reload; consumed once to auto-enter drop mode as host.
-const AUTO_RECEIVE_KEY = "dd-auto-receive";
 
-export type ToastItem = { id: number; message: string; type: "success" | "error" | "info" };
+const TOAST_VISIBLE_MS = 4000;
+const TOAST_EXIT_MS = 200; // must match --duration-2 in app/globals.css
+
+export type ToastItem = {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+  exiting?: boolean;
+};
 export type ChatMessage = { id: number; sender: "you" | "peer"; text: string };
 export type QueueEntry = {
   index: number;
@@ -108,7 +114,12 @@ export function useDirectDrop() {
   function showToast(message: string, type: ToastItem["type"] = "info") {
     const id = ++nextId;
     setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+
+    // Visible 4s, then exit 200ms so the top-edge transition can play before unmount.
+    setTimeout(() => {
+      setToasts((t) => t.map((x) => (x.id === id ? { ...x, exiting: true } : x)));
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), TOAST_EXIT_MS);
+    }, TOAST_VISIBLE_MS);
   }
 
   function setSpinner(v: boolean) {
@@ -571,14 +582,9 @@ export function useDirectDrop() {
         setShowPinEntry(true);
       });
     } else {
-      const autoReceive = sessionStorage.getItem(AUTO_RECEIVE_KEY);
-      if (autoReceive) sessionStorage.removeItem(AUTO_RECEIVE_KEY);
-      const mode = autoReceive ? "drop" : null;
-      if (mode) {
-        setDropMode(true);
-        setDropRole("host");
-      }
-      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, mode);
+      setDropMode(true);
+      setDropRole("host");
+      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, "drop");
       setShareUrl(link);
       setShowShare(true);
       QRCode.toDataURL(link, {
@@ -589,7 +595,7 @@ export function useDirectDrop() {
         color: { dark: "#0A0A0B", light: "#ffffff" },
       })
         .then(setQrDataUrl)
-        .catch(() => {});
+        .catch(() => { });
     }
   }
 
@@ -602,6 +608,26 @@ export function useDirectDrop() {
     const iceServers: RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "5c9daad2f3ec33c9b9353772",
+        credential: "c3odGSFJiu9Hu2Mr",
+      },
     ];
     // Set at build time, e.g. Metered/Open Relay or Cloudflare Realtime TURN.
     if (process.env.NEXT_PUBLIC_TURN_URL) {
@@ -818,33 +844,13 @@ export function useDirectDrop() {
   function shareOrCopyLink() {
     if (!shareUrl) return;
     if (navigator.share) {
-      navigator.share({ title: "DirectDrop", url: shareUrl }).catch(() => {});
+      navigator.share({ title: "DirectDrop", url: shareUrl }).catch(() => { });
     } else {
       navigator.clipboard
         .writeText(shareUrl)
         .then(() => showToast("Link copied!", "success"))
         .catch(() => showToast("Copy failed", "error"));
     }
-  }
-
-  // Turns the current generic share panel into an explicit "receive files"
-  // request: same PIN/peer, link now carries mode=drop.
-  function enterReceiveDropShare() {
-    if (!pin) return;
-    setDropMode(true);
-    setDropRole("host");
-    const link = utils.buildShareUrl(window.location.origin, window.location.pathname, pin, "drop");
-    setShareUrl(link);
-    QRCode.toDataURL(link, { width: 200, margin: 1, color: { dark: "#0A0A0B", light: "#ffffff" } })
-      .then(setQrDataUrl)
-      .catch(() => {});
-  }
-
-  // Reloads to a clean URL with a fresh PIN, auto-entering drop-mode host
-  // share once the new peer connects — the post-transfer viral CTA.
-  function createOwnDirectDrop() {
-    sessionStorage.setItem(AUTO_RECEIVE_KEY, "1");
-    window.location.href = window.location.pathname;
   }
 
   const queueDrained = queue.length > 0 && queue.every((q) => q.status === "done");
@@ -886,7 +892,5 @@ export function useDirectDrop() {
     cancelFileAt,
     copyPin,
     shareOrCopyLink,
-    enterReceiveDropShare,
-    createOwnDirectDrop,
   };
 }

@@ -91,13 +91,14 @@ export default function Home() {
 
   useEffect(() => {
     setIsTouch(navigator.maxTouchPoints > 0);
-    setIsDark(document.documentElement.classList.contains("dark"));
+    // .dark class = warm-light variant (see globals.css); dark is default.
+    setIsDark(!document.documentElement.classList.contains("dark"));
   }, []);
 
   function toggleTheme() {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    document.documentElement.classList.toggle("dark", !next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }
 
@@ -181,21 +182,25 @@ export default function Home() {
         }}
       />
 
-      {/* Full-page drop overlay */}
-      {dragActive && (
-        <div className="fixed inset-0 z-40 bg-interactive-wash backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <div className="m-4 px-10 py-8 bg-surface border-2 border-dashed border-interactive rounded-2xl shadow-2xl text-center animate-fade-in">
-            <svg className="w-10 h-10 text-interactive mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="text-lg font-bold text-text">Drop files to send</p>
-            <p className="text-sm text-text-muted mt-1">They go straight to your peer — nothing is uploaded</p>
-          </div>
+      {/* Full-page drop overlay — stays mounted so leave can fade, not snap */}
+      <div
+        className={`drag-overlay fixed inset-0 z-40 bg-interactive-wash flex items-center justify-center pointer-events-none ${
+          dragActive ? "backdrop-blur-sm" : ""
+        }`}
+        data-active={dragActive ? "" : undefined}
+        aria-hidden={!dragActive}
+      >
+        <div className="m-4 px-10 py-8 bg-surface border-2 border-dashed border-interactive rounded-2xl shadow-2xl text-center">
+          <svg className="w-10 h-10 text-interactive mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p className="text-lg font-bold text-text">Drop files to send</p>
+          <p className="text-sm text-text-muted mt-1">They go straight to your peer — nothing is uploaded</p>
         </div>
-      )}
+      </div>
 
       <main
-        className={`bg-surface border border-hairline p-4 sm:p-8 rounded-3xl shadow-2xl w-full transition-all duration-300 min-h-[80vh] flex flex-col ${
+        className={`w-full min-h-[80vh] flex flex-col px-4 sm:px-8 py-8 sm:py-10 ${
           isDropContributor ? "max-w-lg" : "max-w-5xl"
         }`}
       >
@@ -239,7 +244,7 @@ export default function Home() {
               type="button"
               onClick={toggleTheme}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="shrink-0 p-2 rounded-lg text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
+              className="shrink-0 p-3 rounded-lg text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
             >
               {isDark ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -253,38 +258,33 @@ export default function Home() {
             </button>
           </div>
           {!isDropContributor && (
-            <>
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-text-muted mb-4">
-                <span className="inline-flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5 text-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  End-to-end encrypted
-                </span>
-                <span className="text-text-subtle" aria-hidden="true">·</span>
-                <span>No size limits</span>
-                <span className="text-text-subtle" aria-hidden="true">·</span>
-                <span>No servers, no signups</span>
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs text-text-muted">No install. No account. Files stay between you.</span>
-              </div>
-            </>
+            <div className="mt-1 mb-4 border-t border-hairline pt-3 flex flex-wrap items-center text-xs font-semibold text-text-muted">
+              <span className="inline-flex items-center gap-1.5 pr-3">
+                <svg className="w-3.5 h-3.5 text-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                End-to-end encrypted
+              </span>
+              <span className="px-3 border-l border-hairline">No size limits</span>
+              <span className="px-3 border-l border-hairline">No servers, no signups</span>
+            </div>
           )}
         </header>
 
-        <div className={`grid gap-4 sm:gap-8 flex-1 ${isDropContributor ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
+        <div
+          className={`grid gap-4 sm:gap-8 flex-1 ${
+            isDropContributor ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 md:divide-x md:divide-hairline"
+          }`}
+        >
           {/* Left Column: Connect, File Input, Queue */}
-          <div className={`flex flex-col ${isDropContributor ? "" : "order-2 md:order-1"}`}>
+          <div className={`flex flex-col ${isDropContributor ? "" : "order-2 md:order-1 md:pr-8"}`}>
             {isDropContributor && dd.showSpinner && (
-              <div className="mb-4 p-4 bg-surface rounded-2xl border border-hairline shadow-sm" role="status">
-                <div className="flex items-center justify-center gap-3 py-1">
-                  <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <span className="text-sm font-medium text-text-muted">Connecting…</span>
-                </div>
+              <div className="mb-4 flex items-center justify-center gap-3 py-3" role="status">
+                <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-sm font-medium text-text-muted">Connecting…</span>
               </div>
             )}
             {isDropContributor && dd.connected && (
@@ -294,7 +294,7 @@ export default function Home() {
               </div>
             )}
             {isDropContributor && dd.connectionLost && (
-              <div className="mb-4 p-4 bg-error-wash border border-error/30 rounded-2xl flex items-center justify-between gap-3" role="status">
+              <div className="mb-4 p-4 bg-error-wash border-l-4 border-error rounded-lg flex items-center justify-between gap-3" role="status">
                 <p className="text-sm font-medium text-text">Connection lost.</p>
                 <button
                   type="button"
@@ -347,12 +347,12 @@ export default function Home() {
                     (document.getElementById("fileInput") as HTMLInputElement | null)?.click();
                   }
                 }}
-                className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive transition-all duration-200 group ${
+                className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer bg-surface hover:bg-surface-hover hover:border-interactive ${
                   isDropContributor ? "h-64 sm:h-72" : "h-52 sm:h-60"
                 } ${dragActive ? "border-interactive bg-interactive-wash scale-[1.02]" : "border-hairline-strong"}`}
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                  <div className="p-4 bg-surface rounded-full shadow-md ring-1 ring-hairline mb-4 group-hover:scale-110 transition-all duration-200">
+                  <div className="p-4 bg-surface rounded-full shadow-md ring-1 ring-hairline mb-4">
                     <svg className="w-8 h-8 text-interactive" aria-hidden="true" fill="none" viewBox="0 0 20 16">
                       <path
                         stroke="currentColor"
@@ -401,7 +401,7 @@ export default function Home() {
                         item.status === "sending"
                           ? "border-interactive bg-interactive-wash"
                           : "border-hairline bg-surface"
-                      } flex justify-between items-center transition-all`}
+                      } flex justify-between items-center transition-colors`}
                     >
                       <div className="flex items-center space-x-3 overflow-hidden">
                         <FileIcon
@@ -412,7 +412,9 @@ export default function Home() {
                           <p className="text-sm font-semibold text-text truncate" title={item.name}>
                             {item.name}
                           </p>
-                          <p className="text-xs text-text-muted">{(item.size / (1024 * 1024)).toFixed(2)} MB</p>
+                          <p className="text-xs font-mono text-text-muted tabular-nums">
+                            {(item.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -466,18 +468,8 @@ export default function Home() {
             {isDropContributor && dd.queueDrained && (
               <div className="mb-6 p-5 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
                 <p className="text-sm font-semibold text-text mb-1">All files sent</p>
-                <p className="text-xs text-text-muted mb-4">
-                  Need files on this device too? Start your own DirectDrop.
-                </p>
-                <button
-                  type="button"
-                  onClick={dd.createOwnDirectDrop}
-                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
-                >
-                  Create your own DirectDrop
-                </button>
                 {DONATE_URL && (
-                  <p className="text-xs text-text-muted mt-3 text-center">
+                  <p className="text-xs text-text-muted text-center">
                     <a
                       href={DONATE_URL}
                       target="_blank"
@@ -493,12 +485,13 @@ export default function Home() {
 
             {isDropContributor && dd.progress && (
               <div className="mb-6 w-full bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
-                <div className="flex justify-between items-end mb-2 gap-2">
-                  <span className="text-sm font-semibold text-text truncate">
-                    Sending <span className="text-interactive">{dd.progress.filename}</span>
-                  </span>
-                  <span className="text-xs font-medium text-text-muted bg-surface-hover px-2 py-1 rounded-md whitespace-nowrap">
-                    {dd.progress.eta}
+                <div className="flex justify-between items-start mb-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Sending</p>
+                    <p className="text-sm font-semibold text-text truncate">{dd.progress.filename}</p>
+                  </div>
+                  <span className="font-mono text-3xl font-extrabold text-interactive tabular-nums shrink-0">
+                    {Math.round(dd.progress.pct)}<span className="text-base align-top">%</span>
                   </span>
                 </div>
                 <div
@@ -510,24 +503,49 @@ export default function Home() {
                   aria-label={`Sending ${dd.progress.filename}`}
                 >
                   <div
-                    className="bg-interactive h-2.5 rounded-full transition-all duration-300 relative"
-                    style={{ width: `${dd.progress.pct}%` }}
+                    className="progress-fill bg-interactive h-2.5 rounded-full relative"
+                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, dd.progress.pct)) / 100})` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
                   </div>
                 </div>
-                <div className="flex justify-between text-xs text-text-muted mt-1">
-                  <span className="font-medium">{dd.progress.speed}</span>
-                  <span className="font-semibold text-text">{Math.round(dd.progress.pct)}%</span>
-                  <span className="text-text-muted">{dd.progress.sizeText}</span>
+                <div className="flex justify-between font-mono text-xs text-text-muted tabular-nums">
+                  <span>{dd.progress.speed}</span>
+                  <span>{dd.progress.sizeText}</span>
+                  <span>{dd.progress.eta}</span>
                 </div>
               </div>
+            )}
+
+            {/* Pre-connection: how it works */}
+            {dd.showHelp && !isDropContributor && (
+              <div className="mt-2 p-5">
+                <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-4">How it works</h2>
+                <ol className="relative flex flex-col gap-5">
+                  <div className="absolute left-[15px] top-1 bottom-1 w-px bg-hairline-strong" aria-hidden="true" />
+                  {HOW_IT_WORKS.map(({ title, detail }, i) => (
+                    <li key={title} className="relative flex items-start gap-4">
+                      <span className="relative z-10 flex-shrink-0 w-8 h-8 rounded-full bg-surface border-2 border-interactive flex items-center justify-center text-xs font-bold text-interactive">
+                        {i + 1}
+                      </span>
+                      <div className="pt-1">
+                        <p className="text-sm font-semibold text-text">{title}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{detail}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {!isDropContributor && (
+              <p className="mt-auto pt-6 text-xs text-text-subtle">No install. No account. Files stay between you.</p>
             )}
           </div>
 
           {/* Right Column: Share, Status, Chat, Progress — hidden for drop contributor */}
           {!isDropContributor && (
-          <div className="flex flex-col h-full order-1 md:order-2">
+          <div className="flex flex-col h-full order-1 md:order-2 md:pl-8">
             {/* Skeleton reserving the share panel's slot until the PIN arrives — avoids layout shift */}
             {!dd.pin && !dd.showSpinner && !dd.connected && (
               <div
@@ -542,39 +560,28 @@ export default function Home() {
               </div>
             )}
 
-            {/* Share panel: PIN, link, QR — generic or receive-first when dropMode */}
+            {/* Share panel: PIN, link, QR — always receive-first */}
             {dd.showShare && (
-              <div id="share" className="mb-6 bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
-                {!dd.dropMode && (
-                  <button
-                    type="button"
-                    onClick={dd.enterReceiveDropShare}
-                    className="w-full mb-4 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm"
-                  >
-                    Receive files
-                  </button>
-                )}
-                <p
-                  className={`text-xs font-bold uppercase tracking-wider mb-2 ${
-                    dd.dropMode ? "text-interactive tracking-[0.18em]" : "text-text-muted"
-                  }`}
-                >
-                  {dd.dropMode ? "Receive files" : "Your PIN — share it"}
+              <div
+                id="share"
+                className="mb-6 bg-surface p-5 sm:p-6 rounded-3xl border border-hairline"
+                style={{ boxShadow: "var(--shadow-2), var(--glow-accent)" }}
+              >
+                <p className="text-xs font-bold uppercase tracking-wider mb-2 text-interactive tracking-[0.18em]">
+                  Receive files
                 </p>
-                {dd.dropMode && (
-                  <p className="text-sm text-text-muted mb-3 leading-relaxed">
-                    Scan or share this link to send files to this device.
-                  </p>
-                )}
+                <p className="text-sm text-text-muted mb-3 leading-relaxed">
+                  Scan or share this link to send files to this device.
+                </p>
                 <button
                   type="button"
                   onClick={onCopyPin}
                   title="Copy PIN"
-                  className={`group w-full text-center bg-surface-code border rounded-xl py-3 mb-4 transition-all ${
+                  className={`group w-full text-center bg-surface-code border rounded-xl py-3 mb-4 ${
                     pinCopied ? "border-interactive scale-[1.02]" : "border-hairline hover:border-interactive"
                   }`}
                 >
-                  <span className="text-3xl sm:text-4xl font-mono font-extrabold text-interactive tracking-[0.35em] select-all">
+                  <span className="text-4xl sm:text-5xl font-mono font-extrabold text-interactive tracking-[0.3em] sm:tracking-[0.35em] select-all">
                     {dd.pin || "------"}
                   </span>
                   <span
@@ -588,6 +595,8 @@ export default function Home() {
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
+                    id="shareUrl"
+                    name="shareUrl"
                     readOnly
                     value={dd.shareUrl}
                     aria-label="Share link"
@@ -613,41 +622,19 @@ export default function Home() {
                 )}
                 <div className="mt-3 flex items-center gap-2 text-xs text-text-muted" role="status">
                   <span className="inline-block w-2 h-2 rounded-full bg-interactive animate-pulse" aria-hidden="true" />
-                  {dd.dropMode ? "Waiting for someone to send files…" : "Waiting for someone to connect…"}
+                  Waiting for someone to send files…
                 </div>
               </div>
             )}
 
             {/* Connecting spinner (URL-based auto-connect) */}
             {dd.showSpinner && (
-              <div className="mb-6 p-5 bg-surface rounded-2xl border border-hairline shadow-sm" role="status">
-                <div className="flex items-center justify-center space-x-3 py-2">
-                  <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <span className="text-sm font-medium text-text-muted">Connecting to peer...</span>
-                </div>
-              </div>
-            )}
-
-            {/* Pre-connection: how it works */}
-            {dd.showHelp && (
-              <div className="mb-6 p-5">
-                <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">How it works</h2>
-                <ol className="grid grid-cols-1 gap-3">
-                  {HOW_IT_WORKS.map(({ title, detail }, i) => (
-                    <li key={title} className="flex items-center gap-3">
-                      <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-interactive-wash flex items-center justify-center text-sm font-bold text-interactive">
-                        {i + 1}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-text">{title}</p>
-                        <p className="text-xs text-text-muted">{detail}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+              <div className="mb-6 flex items-center justify-center gap-3 py-4" role="status">
+                <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-sm font-medium text-text-muted">Connecting to peer...</span>
               </div>
             )}
 
@@ -668,13 +655,15 @@ export default function Home() {
             {/* Transfer Progress */}
             {dd.progress && (
               <div className="mb-6 w-full bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
-                <div className="flex justify-between items-end mb-2 gap-2">
-                  <span className="text-sm font-semibold text-text truncate">
-                    {dd.progress.role === "send" ? "Sending" : "Receiving"}{" "}
-                    <span className="text-interactive">{dd.progress.filename}</span>
-                  </span>
-                  <span className="text-xs font-medium text-text-muted bg-surface-hover px-2 py-1 rounded-md whitespace-nowrap">
-                    {dd.progress.eta}
+                <div className="flex justify-between items-start mb-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">
+                      {dd.progress.role === "send" ? "Sending" : "Receiving"}
+                    </p>
+                    <p className="text-sm font-semibold text-text truncate">{dd.progress.filename}</p>
+                  </div>
+                  <span className="font-mono text-3xl font-extrabold text-interactive tabular-nums shrink-0">
+                    {Math.round(dd.progress.pct)}<span className="text-base align-top">%</span>
                   </span>
                 </div>
                 <div
@@ -686,40 +675,26 @@ export default function Home() {
                   aria-label={`Transferring ${dd.progress.filename}`}
                 >
                   <div
-                    className="bg-interactive h-2.5 rounded-full transition-all duration-300 relative"
-                    style={{ width: `${dd.progress.pct}%` }}
+                    className="progress-fill bg-interactive h-2.5 rounded-full relative"
+                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, dd.progress.pct)) / 100})` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
                   </div>
                 </div>
-                <div className="flex justify-between text-xs text-text-muted mt-1">
-                  <span className="font-medium">{dd.progress.speed}</span>
-                  <span className="font-semibold text-text">{Math.round(dd.progress.pct)}%</span>
-                  <span className="text-text-muted">{dd.progress.sizeText}</span>
+                <div className="flex justify-between font-mono text-xs text-text-muted tabular-nums">
+                  <span>{dd.progress.speed}</span>
+                  <span>{dd.progress.sizeText}</span>
+                  <span>{dd.progress.eta}</span>
                 </div>
                 {dd.receivingActive && (
                   <button
                     type="button"
                     onClick={dd.cancelActiveReceive}
-                    className="mt-3 w-full bg-surface hover:bg-error-wash border border-error/30 text-error text-sm font-semibold py-2 px-4 rounded-xl transition-all"
+                    className="mt-3 w-full bg-surface hover:bg-error-wash border border-error/30 text-error text-sm font-semibold py-2 px-4 rounded-xl"
                   >
                     Cancel download
                   </button>
                 )}
-              </div>
-            )}
-
-            {/* Viral CTA after a successful transfer on the generic (non-drop) flow */}
-            {!isDropContributor && dd.donateHint && (
-              <div className="mb-3 p-4 bg-surface rounded-2xl border border-interactive/40 shadow-sm animate-fade-in">
-                <p className="text-sm font-semibold text-text mb-3">Need to send or receive more files?</p>
-                <button
-                  type="button"
-                  onClick={dd.createOwnDirectDrop}
-                  className="w-full bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
-                >
-                  Create your own DirectDrop
-                </button>
               </div>
             )}
 
@@ -767,7 +742,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="font-medium truncate text-text">{entry.name}</span>
-                      <span className="ml-auto text-text-muted shrink-0">{entry.sizeLabel}</span>
+                      <span className="ml-auto font-mono text-text-muted tabular-nums shrink-0">{entry.sizeLabel}</span>
                     </li>
                   ))}
                 </ul>
@@ -797,13 +772,13 @@ export default function Home() {
                 <div className="flex space-x-3 mt-4">
                   <button
                     onClick={dd.acceptIncoming}
-                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-2.5 px-4 rounded-xl transition-all shadow-sm"
+                    className="flex-1 bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert text-sm font-semibold py-3 px-4 rounded-xl shadow-sm"
                   >
                     Accept
                   </button>
                   <button
                     onClick={dd.rejectIncoming}
-                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-2.5 px-4 rounded-xl transition-all"
+                    className="flex-1 bg-surface hover:bg-surface-hover border border-hairline text-text-muted text-sm font-semibold py-3 px-4 rounded-xl"
                   >
                     Reject
                   </button>
@@ -818,7 +793,7 @@ export default function Home() {
                   <span className="w-2 h-2 rounded-full bg-success" aria-hidden="true" />
                   Connected
                   {dd.role && (
-                    <span className="font-normal text-text-subtle">
+                    <span className="font-normal text-text-muted">
                       &middot; {dd.role === "host" ? "you created this connection" : "you joined via PIN"}
                     </span>
                   )}
@@ -852,14 +827,14 @@ export default function Home() {
                       type="text"
                       value={chatValue}
                       onChange={(e) => setChatValue(e.target.value)}
-                      className="flex-1 min-w-0 bg-surface border border-hairline rounded-xl px-4 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-interactive/40 focus:border-interactive transition-all"
+                      className="flex-1 min-w-0 bg-surface border border-hairline rounded-xl px-4 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-interactive/40 focus:border-interactive transition-colors"
                       placeholder="Type a message..."
                       aria-label="Chat message"
                       autoComplete="off"
                     />
                     <button
                       type="submit"
-                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                      className="bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-text-invert px-4 py-3 rounded-xl text-sm font-semibold shadow-sm"
                     >
                       Send
                     </button>
@@ -874,20 +849,20 @@ export default function Home() {
 
       {/* Crawlable FAQ — native <details>, no JS. Mirrored as FAQPage JSON-LD. */}
       {!isDropContributor && (
-      <section id="faq" className="max-w-5xl w-full mt-8 px-2 sm:px-0" aria-labelledby="faq-heading">
+      <section id="faq" className="max-w-5xl w-full mt-10 px-2 sm:px-0" aria-labelledby="faq-heading">
         <h2 id="faq-heading" className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3">
           Frequently asked questions
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {FAQ.map(({ q, a }) => (
-            <details
-              key={q}
-              className="group bg-surface border border-hairline rounded-xl px-4 py-3 open:pb-4"
-            >
-              <summary className="cursor-pointer list-none flex items-center justify-between gap-2 text-sm font-semibold text-text">
-                {q}
+        <div className="border-t border-b border-hairline divide-y divide-hairline">
+          {FAQ.map(({ q, a }, i) => (
+            <details key={q} className="group py-4">
+              <summary className="cursor-pointer list-none flex items-start gap-4 text-sm font-semibold text-text">
+                <span className="font-mono text-xs text-text-muted pt-0.5 w-6 flex-shrink-0" aria-hidden="true">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="flex-1">{q}</span>
                 <svg
-                  className="w-4 h-4 text-text-subtle flex-shrink-0 transition-transform group-open:rotate-180"
+                  className="w-4 h-4 text-text-muted flex-shrink-0 transition-transform group-open:rotate-180 mt-0.5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -896,7 +871,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </summary>
-              <p className="mt-2 text-sm text-text-muted leading-relaxed">{a}</p>
+              <p className="mt-2 pl-10 text-sm text-text-muted leading-relaxed">{a}</p>
             </details>
           ))}
         </div>
@@ -904,22 +879,19 @@ export default function Home() {
       )}
 
       {!isDropContributor && (
-      <p className="mt-6 mb-2 text-xs text-text-muted">
-        Free forever
+      <div className="mt-8 mb-2 w-full max-w-5xl border-t border-hairline pt-4 px-2 sm:px-0 flex items-center justify-between">
+        <p className="text-xs text-text-muted">Free forever</p>
         {DONATE_URL && (
-          <>
-            {" · "}
-            <a
-              href={DONATE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-text"
-            >
-              Support DirectDrop ❤️
-            </a>
-          </>
+          <a
+            href={DONATE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-text-muted underline underline-offset-2 hover:text-text"
+          >
+            Support DirectDrop ❤️
+          </a>
         )}
-      </p>
+      </div>
       )}
 
       {/* Confetti burst on each completed transfer — pure CSS, remounts per celebration */}
@@ -952,7 +924,8 @@ export default function Home() {
           <div
             key={toast.id}
             role="status"
-            className={`flex items-center gap-2.5 p-4 rounded-xl border shadow-lg animate-fade-in text-sm font-medium ${
+            data-exiting={toast.exiting ? "" : undefined}
+            className={`toast-enter flex items-center gap-2.5 p-4 rounded-xl border shadow-lg text-sm font-medium ${
               toast.type === "success"
                 ? "bg-success border-success text-text-invert"
                 : toast.type === "error"

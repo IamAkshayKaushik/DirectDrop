@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy": "NEXT_PUBLIC_SITE_URL=https://directdrop.akshaykaushik.workers.dev next build && wrangler deploy",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
