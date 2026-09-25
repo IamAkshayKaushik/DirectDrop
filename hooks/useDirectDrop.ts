@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type Peer from "peerjs";
-import type { DataConnection } from "peerjs";
 import QRCode from "qrcode";
 import utils from "@/lib/transfer-utils";
 import { createStreamDownload, probeStreamDownload, type StreamWriter } from "@/lib/stream-download";
+import { startSession, type Link } from "@/lib/webrtc-session";
 
 const {
   CHUNK_SIZE,
@@ -13,7 +12,7 @@ const {
   formatFileSize,
   calculateReceivedBytes,
   calculateReceivePercent,
-  generatePin,
+  generateRoomId,
   formatEta,
   getFileIconType,
 } = utils;
@@ -75,14 +74,17 @@ export function useDirectDrop() {
   // All reconnect attempts exhausted; drop-mode contributors have no PIN
   // entry to fall back to, so they need an explicit retry affordance.
   const [connectionLost, setConnectionLost] = useState(false);
+  const [awaitingGuest, setAwaitingGuest] = useState(false);
+  const [transferAllowed, setTransferAllowed] = useState(false);
+  const [safetyCode, setSafetyCode] = useState("");
   const [dropMode, setDropMode] = useState(false);
   const [dropRole, setDropRole] = useState<"host" | "contributor" | null>(null);
   // Streaming-download support probe; null until known. Pessimistic default —
   // show the manual-save hint until we've confirmed the SW path works.
   const [streamOk, setStreamOk] = useState<boolean | null>(null);
 
-  const peerRef = useRef<Peer | null>(null);
-  const connRef = useRef<DataConnection | null>(null);
+  const sessionRef = useRef<{ close: () => void } | null>(null);
+  const connRef = useRef<Link | null>(null);
   const defaultTitleRef = useRef<string>("");
   const eng = useRef({
     fileQueue: [] as File[],
@@ -109,6 +111,8 @@ export function useDirectDrop() {
     hasPeerParam: false,
     spinnerVisible: false,
     destroyed: false,
+    guestConfirmed: false,
+    roomId: null as string | null,
   }).current;
 
   function showToast(message: string, type: ToastItem["type"] = "info") {
@@ -237,6 +241,7 @@ export function useDirectDrop() {
 
   function tryStartSending() {
     const conn = connRef.current;
+    if (!eng.guestConfirmed) return false;
     if (!conn || !conn.open || eng.isSending || eng.isReceiving) return false;
     if (eng.currentFileIndex >= eng.fileQueue.length) return false;
     if (!prepareNextFile()) return false;
@@ -346,8 +351,9 @@ export function useDirectDrop() {
       if (typeof msg === "object" && msg !== null && msg.type === "chat") {
         appendChat("peer", String(msg.text));
       } else if (typeof msg === "string" && msg.startsWith(FILENAME_PREFIX)) {
+        const base = msg.slice(FILENAME_PREFIX.length).split(/[/\\]/).pop() || "file";
+        eng.incomingFilename = base.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 180) || "file";
         eng.incomingFilePending = true;
-        eng.incomingFilename = msg.slice(FILENAME_PREFIX.length);
         eng.incomingTotalBytes = 0;
         eng.incomingTotalChunks = 0;
         eng.downloadInitiated = false;
@@ -358,6 +364,10 @@ export function useDirectDrop() {
       } else if (typeof msg === "string" && msg.startsWith("size:")) {
         const totalChunks = parseInt(msg.slice(5), 10);
         if (!isNaN(totalChunks) && totalChunks >= 0) {
+          if (totalChunks > 100_000) {
+            showToast("That file is too large to accept", "error");
+            return;
+          }
           eng.incomingTotalChunks = totalChunks;
           const totalBytes = eng.incomingTotalBytes || totalChunks * CHUNK_SIZE;
           eng.receivedChunks = new Array(totalChunks);
@@ -367,6 +377,11 @@ export function useDirectDrop() {
             iconType: getFileIconType(eng.incomingFilename),
           });
         }
+      } else if (msg === "allowed") {
+        eng.guestConfirmed = true;
+        setTransferAllowed(true);
+        setAwaitingGuest(false);
+        tryStartSending();
       } else if (msg === "next") {
         // Only the sender role handles "next" — ignore if we're not sending
         if (eng.isSending) void sendNextFileChunk();
@@ -438,7 +453,7 @@ export function useDirectDrop() {
     setShowHelp(false);
     setSpinner(false);
     showToast(toastMsg, "success");
-    tryStartSending();
+    if (eng.guestConfirmed) tryStartSending();
     syncQueue();
   }
 
@@ -453,7 +468,7 @@ export function useDirectDrop() {
     connRef.current = null;
     setConnected(false);
 
-    if (eng.remotePeerId && eng.reconnectAttempt < 3) {
+    if (eng.roomId && eng.reconnectAttempt < 3) {
       const delays = [2000, 4000, 8000];
       const delay = delays[eng.reconnectAttempt];
       eng.reconnectAttempt++;
@@ -468,50 +483,58 @@ export function useDirectDrop() {
     }
   }
 
-  // Connects once to eng.remotePeerId. peer.connect() can hang forever with
-  // no open/close/error if the remote peer id is stale on the signaling
-  // server, so this always settles within ATTEMPT_TIMEOUT_MS via onFail.
-  const ATTEMPT_TIMEOUT_MS = 5000;
+  function joinRoom(roomId: string, onGiveUp?: () => void) {
+    sessionRef.current?.close();
+    connRef.current = null;
+    const session = startSession(roomId, {
+      onLink(link, role) {
+        connRef.current = link;
+        eng.roomId = roomId;
+        eng.remotePeerId = roomId;
+        eng.reconnectAttempt = 0;
+        eng.guestConfirmed = false;
+        setPinConnecting(false);
+        setTransferAllowed(false);
+        setAwaitingGuest(role === "host");
+        setRole(role);
+        if (role === "guest") {
+          const isDrop = utils.parseDropModeMarker(new URLSearchParams(window.location.search).get("mode"));
+          history.replaceState(null, "", utils.buildDropPersistUrl(window.location.pathname, isDrop));
+        }
+        enterConnectedUI(role === "host" ? "Check the code, then allow the sender" : "Connected. Waiting to be allowed.");
+      },
+      onSafetyCode(code) {
+        setSafetyCode(code);
+      },
+      onClose() {
+        handleConnClose();
+      },
+      onFail(message) {
+        showToast(message, "error");
+        setSpinner(false);
+        if (onGiveUp) onGiveUp();
+        else if (eng.hasPeerParam) {
+          setShowHelp(true);
+          setShowPinEntry(true);
+        }
+      },
+    });
+    session.onData = handleData;
+    sessionRef.current = session;
+  }
+
   function attemptReconnect(onFail: () => void) {
-    const peer = peerRef.current;
-    if (!peer || peer.destroyed || !eng.remotePeerId) {
+    if (!eng.roomId || eng.destroyed) {
       onFail();
       return;
     }
-    const conn = peer.connect(eng.remotePeerId);
-    connRef.current = conn;
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      onFail();
-    }, ATTEMPT_TIMEOUT_MS);
-    conn.on("open", () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      eng.reconnectAttempt = 0;
-      enterConnectedUI("Reconnected!");
-    });
-    conn.on("data", handleData);
-    conn.on("close", () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      onFail();
-    });
-    conn.on("error", () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      onFail();
-    });
+    joinRoom(eng.roomId, onFail);
   }
 
   // Manual retry after reconnect attempts are exhausted — reuses the same
   // target peer id so a drop-mode contributor (no PIN entry UI) can recover.
   function retryConnection() {
-    if (!eng.remotePeerId) return;
+    if (!eng.roomId) return;
     setConnectionLost(false);
     showToast("Reconnecting...", "info");
     attemptReconnect(() => {
@@ -520,25 +543,34 @@ export function useDirectDrop() {
     });
   }
 
-  function handleInboundConnection(conn: DataConnection) {
-    connRef.current = conn;
-    conn.on("open", () => {
-      eng.remotePeerId = conn.peer;
-      eng.reconnectAttempt = 0;
-      setRole("host");
-      enterConnectedUI("Peer connected!");
-    });
-    conn.on("data", handleData);
-    conn.on("close", handleConnClose);
+  function publishRoom(id: string) {
+    setPin(id);
+    eng.roomId = id;
+    eng.remotePeerId = id;
+    setDropMode(true);
+    setDropRole("host");
+    const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, "drop");
+    setShareUrl(link);
+    setShowShare(true);
+    QRCode.toDataURL(link, {
+      width: 200,
+      margin: 1,
+      color: { dark: "#0A0A0B", light: "#ffffff" },
+    })
+      .then(setQrDataUrl)
+      .catch(() => {});
   }
 
-  function handlePeerOpen(id: string) {
-    setPin(id);
-
+  useEffect(() => {
+    eng.destroyed = false;
     const searchParams = new URLSearchParams(window.location.search);
     const peerIdParam = searchParams.get("peer");
     eng.hasPeerParam = !!peerIdParam;
     if (peerIdParam) {
+      if (!utils.validateRoomId(peerIdParam)) {
+        showToast("This link is not a DirectDrop room.", "error");
+        return;
+      }
       const isDrop = utils.parseDropModeMarker(searchParams.get("mode"));
       if (isDrop) {
         setDropMode(true);
@@ -548,135 +580,22 @@ export function useDirectDrop() {
       setShowPinEntry(false);
       setShowHelp(false);
       setSpinner(true);
-
-      const connectTimeout = setTimeout(() => {
-        showToast("Couldn't connect — peer may be offline, or this network (mobile data, hotel/office Wi-Fi) may be blocking it.", "error");
-        connRef.current?.close();
-        connRef.current = null;
-        setSpinner(false);
-        setShowHelp(true);
-        setShowPinEntry(true);
-      }, 10000);
-
-      const conn = peerRef.current!.connect(peerIdParam);
-      connRef.current = conn;
-      conn.on("open", () => {
-        clearTimeout(connectTimeout);
-        history.replaceState(null, "", utils.buildDropPersistUrl(window.location.pathname, isDrop));
-        eng.remotePeerId = peerIdParam;
-        eng.reconnectAttempt = 0;
-        setRole("guest");
-        enterConnectedUI("Connected to peer!");
-      });
-      conn.on("data", handleData);
-      conn.on("close", handleConnClose);
-      conn.on("error", (err: any) => {
-        clearTimeout(connectTimeout);
-        const msg =
-          err.type === "peer-unavailable"
-            ? "No peer found — check the PIN and try again."
-            : "Connection failed: " + err.message;
-        showToast(msg, "error");
-        setSpinner(false);
-        setShowHelp(true);
-        setShowPinEntry(true);
-      });
+      joinRoom(peerIdParam);
     } else {
-      setDropMode(true);
-      setDropRole("host");
-      const link = utils.buildShareUrl(window.location.origin, window.location.pathname, id, "drop");
-      setShareUrl(link);
-      setShowShare(true);
-      QRCode.toDataURL(link, {
-        width: 200,
-        margin: 1,
-        // QR modules in the foreground color on a white card behind them;
-        // the card uses bg-white so QR contrast stays high regardless of theme.
-        color: { dark: "#0A0A0B", light: "#ffffff" },
-      })
-        .then(setQrDataUrl)
-        .catch(() => { });
+      const id = generateRoomId();
+      publishRoom(id);
+      joinRoom(id);
     }
-  }
-
-  async function createPeer() {
-    const { default: PeerCtor } = await import("peerjs");
-    if (eng.destroyed) return;
-    // STUN only discovers public IPs — it cannot relay. When both peers sit
-    // behind the same NAT (no hairpinning) or symmetric/CG-NAT, a TURN relay
-    // is REQUIRED or the datachannel will never connect.
-    const iceServers: RTCIceServer[] = [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun.cloudflare.com:3478" },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "5c9daad2f3ec33c9b9353772",
-        credential: "c3odGSFJiu9Hu2Mr",
-      },
-    ];
-    // Set at build time, e.g. Metered/Open Relay or Cloudflare Realtime TURN.
-    if (process.env.NEXT_PUBLIC_TURN_URL) {
-      iceServers.push({
-        urls: process.env.NEXT_PUBLIC_TURN_URL,
-        username: process.env.NEXT_PUBLIC_TURN_USERNAME,
-        credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
-      });
-    }
-    const peer = new PeerCtor(generatePin(), {
-      config: { iceServers },
-    });
-    peerRef.current = peer;
-    peer.on("open", handlePeerOpen);
-    peer.on("connection", handleInboundConnection);
-    peer.on("disconnected", () => {
-      if (!peer.destroyed) {
-        showToast("Reconnecting to server...", "info");
-        peer.reconnect();
-      }
-    });
-    peer.on("error", (err: any) => {
-      if (err.type === "unavailable-id") {
-        showToast("PIN collision — regenerating...", "info");
-        peer.destroy();
-        void createPeer();
-      } else {
-        showToast("Connection error: " + err.message, "error");
-        if (eng.spinnerVisible) {
-          setSpinner(false);
-          setShowHelp(true);
-          setShowPinEntry(true);
-        }
-      }
-    });
-  }
-
-  useEffect(() => {
-    eng.destroyed = false;
-    void createPeer();
     return () => {
       eng.destroyed = true;
       if (eng.reconnectTimer) clearTimeout(eng.reconnectTimer);
-      peerRef.current?.destroy();
-      peerRef.current = null;
+      sessionRef.current?.close();
+      sessionRef.current = null;
       connRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   useEffect(() => {
     probeStreamDownload()
@@ -730,10 +649,10 @@ export function useDirectDrop() {
     }
   }
 
-  function connectToPin(value: string) {
-    const pinValue = value.trim();
-    if (!utils.validatePin(pinValue)) {
-      showToast("Please enter a valid 6-digit PIN", "error");
+  function connectToRoom(value: string) {
+    const roomId = utils.parseRoomInput(value);
+    if (!roomId) {
+      showToast("Paste a DirectDrop link.", "error");
       return;
     }
     if (connRef.current?.open) {
@@ -741,34 +660,9 @@ export function useDirectDrop() {
       return;
     }
     setPinConnecting(true);
-
-    const connectTimeout = setTimeout(() => {
-      showToast("Couldn't connect — peer may be offline, or this network (mobile data, hotel/office Wi-Fi) may be blocking it.", "error");
-      setPinConnecting(false);
-      connRef.current?.close();
-      connRef.current = null;
-    }, 10000);
-
-    const conn = peerRef.current!.connect(pinValue);
-    connRef.current = conn;
-    conn.on("open", () => {
-      clearTimeout(connectTimeout);
-      eng.remotePeerId = pinValue;
-      setPinConnecting(false);
-      setRole("guest");
-      enterConnectedUI("Connected to peer!");
-    });
-    conn.on("data", handleData);
-    conn.on("close", handleConnClose);
-    conn.on("error", (err: any) => {
-      clearTimeout(connectTimeout);
-      setPinConnecting(false);
-      const msg =
-        err.type === "peer-unavailable"
-          ? "No peer found — check the PIN and try again."
-          : "Connection failed: " + err.message;
-      showToast(msg, "error");
-    });
+    eng.hasPeerParam = true;
+    setShowShare(false);
+    joinRoom(roomId, () => setPinConnecting(false));
   }
 
   function sendChat(text: string) {
@@ -833,12 +727,13 @@ export function useDirectDrop() {
     }
   }
 
-  function copyPin() {
-    if (!pin) return;
-    navigator.clipboard
-      .writeText(pin)
-      .then(() => showToast("PIN copied!", "success"))
-      .catch(() => showToast("Copy failed", "error"));
+  function confirmGuest() {
+    if (!connRef.current?.open) return;
+    eng.guestConfirmed = true;
+    setAwaitingGuest(false);
+    setTransferAllowed(true);
+    connRef.current.send("allowed");
+    tryStartSending();
   }
 
   function shareOrCopyLink() {
@@ -880,17 +775,20 @@ export function useDirectDrop() {
     dropMode,
     dropRole,
     connectionLost,
+    awaitingGuest,
+    transferAllowed,
+    safetyCode,
     retryConnection,
+    confirmGuest,
     donateHint,
     dismissDonate: () => setDonateHint(false),
     addFiles,
-    connectToPin,
+    connectToRoom,
     sendChat,
     acceptIncoming,
     rejectIncoming,
     cancelActiveReceive,
     cancelFileAt,
-    copyPin,
     shareOrCopyLink,
   };
 }

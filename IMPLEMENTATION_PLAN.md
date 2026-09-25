@@ -1,12 +1,24 @@
 # Implementation Plan: DirectDrop Wedge (Receiver-First + Monetization Path)
 
-**Status:** **PHASE_3_CLOSED** (code wedge complete)  
-**Next EXECUTE code slice:** **NONE** — human gates before any Phase 4 / acquisition work  
-**Last completed:** **3d** DONE (2026-07-25) — Reviewer APPROVE · Tester PASS_WITH_GAPS (C6–C7; donate link untested)  
-**Checkpoint A-code:** ✅ PASSED · **Checkpoint C:** ✅ PASS_WITH_GAPS  
-**Phase 4:** 🚫 **BLOCKED**  
-**Ponytail:** full — ladder enforced  
-**Source of truth:** `PRD.md` · Engine: `hooks/useDirectDrop.ts` · UI: `app/page.tsx`
+**Status:** Production track in progress — signaling is a Cloudflare Durable Object, TURN credentials are minted by the Worker (Cloudflare Realtime). A Worker is not a TURN relay.  
+**Not production-ready until:** a person completes cellular iPhone Safari ↔ Windows on this stack, including screen lock, and `TURN_KEY_ID` / `TURN_KEY_API_TOKEN` are set as Worker secrets (revoke the old Metered credential).  
+**This slice:** PeerJS and the hardcoded Metered password are removed. Room ids are 128-bit. The host allows the sender before any file bytes. Resume is still out.
+
+### Production track
+
+| Phase | Done when |
+|---|---|
+| 1. Ephemeral TURN | Worker calls `generate-ice-servers` with ttl 3600. No TURN password in the client bundle. STUN-only if the secrets are unset. |
+| 2. Owned room | Two desktop tabs transfer a file with zero requests to `0.peerjs.com`. A third socket is rejected. |
+| 3. Allow gate | Host taps Allow after the safety codes match. No file metadata before that. |
+| 4. Resume | A dropped channel continues from the last acked chunk. Not this slice. |
+| 5. iPhone proof | Human gate. Desktop success does not close it. |
+
+Preview the full stack with `npm run preview` (static export + `wrangler dev`). `npm run dev` is the UI only; the room websocket is the Worker.
+
+---
+
+**Previous plan status (historical):** PHASE_3_CLOSED for the drop-mode wedge. Slice 1a “TURN secrets removed” was false at the time it was marked done; the Metered username and credential stayed in `createPeer` until this track.
 
 ### Phase 4 human blocker checklist (acquisition still OFF)
 - [ ] Cellular **A-human**: iPhone ↔ Windows transfer with TURN (Script C/E)

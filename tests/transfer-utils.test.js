@@ -7,6 +7,9 @@ const {
   shouldShowProgressBar,
   validatePin,
   generatePin,
+  generateRoomId,
+  validateRoomId,
+  parseRoomInput,
   formatEta,
   calculateTotalChunks,
   calculateChunkRange,
@@ -147,6 +150,22 @@ describe("validatePin", () => {
   });
   it("rejects PIN with symbols", () => {
     assert.equal(validatePin("12-456"), false);
+  });
+});
+
+describe("room id", () => {
+  it("generates an unguessable id", () => {
+    const id = generateRoomId();
+    assert.equal(validateRoomId(id), true);
+    assert.equal(validateRoomId(generatePin()), false);
+  });
+
+  it("parses a room id or a share link", () => {
+    const id = generateRoomId();
+    assert.equal(parseRoomInput(id), id);
+    assert.equal(parseRoomInput(`https://directdrop.app/?peer=${id}&mode=drop`), id);
+    assert.equal(parseRoomInput("123456"), null);
+    assert.equal(parseRoomInput(""), null);
   });
 });
 
