@@ -73,7 +73,7 @@ export default function Home() {
   addFilesRef.current = dd.addFiles;
 
   function onCopyPin() {
-    dd.copyPin();
+    dd.shareOrCopyLink();
     setPinCopied(true);
     if (pinCopiedTimer.current) clearTimeout(pinCopiedTimer.current);
     pinCopiedTimer.current = setTimeout(() => setPinCopied(false), 1500);
@@ -144,16 +144,9 @@ export default function Home() {
     };
   }, []);
 
-  function onPinSubmit(e: FormEvent) {
+  function onRoomSubmit(e: FormEvent) {
     e.preventDefault();
-    dd.connectToPin(pinValue);
-  }
-
-  function onPinChange(raw: string) {
-    const v = raw.replace(/\D/g, "").slice(0, 6);
-    setPinValue(v);
-    // Auto-connect once a full PIN is typed or pasted.
-    if (v.length === 6) dd.connectToPin(v);
+    dd.connectToRoom(pinValue);
   }
 
   function onChatSubmit(e: FormEvent) {
@@ -265,8 +258,8 @@ export default function Home() {
                 </svg>
                 End-to-end encrypted
               </span>
-              <span className="px-3 border-l border-hairline">No size limits</span>
-              <span className="px-3 border-l border-hairline">No servers, no signups</span>
+              <span className="px-3 border-l border-hairline">Both tabs stay open</span>
+              <span className="px-3 border-l border-hairline">No account</span>
             </div>
           )}
         </header>
@@ -288,9 +281,16 @@ export default function Home() {
               </div>
             )}
             {isDropContributor && dd.connected && (
-              <div className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-success" role="status">
-                <span className="w-2 h-2 rounded-full bg-success" aria-hidden="true" />
-                Connected — ready to send
+              <div className="mb-4 text-sm font-semibold text-success" role="status">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-success" aria-hidden="true" />
+                  {dd.transferAllowed ? "Connected — ready to send" : "Connected — waiting to be allowed"}
+                </span>
+                {!dd.transferAllowed && (
+                  <p className="mt-1 font-normal text-text-muted">
+                    Safety code {dd.safetyCode || "…"}. They must allow you before files move.
+                  </p>
+                )}
               </div>
             )}
             {isDropContributor && dd.connectionLost && (
@@ -309,20 +309,17 @@ export default function Home() {
             {dd.showPinEntry && !isDropContributor && (
               <div className="mb-6 p-4 rounded-2xl border border-dashed border-hairline">
                 <label htmlFor="pinInput" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">
-                  Have a PIN? Enter it to connect
+                  Have a link? Paste it to connect
                 </label>
-                <form onSubmit={onPinSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <form onSubmit={onRoomSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     id="pinInput"
                     type="text"
                     value={pinValue}
-                    onChange={(e) => onPinChange(e.target.value)}
-                    maxLength={6}
-                    pattern="[0-9]{6}"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="6-digit PIN"
-                    className="flex-1 min-w-0 bg-surface-code border border-hairline text-text text-xl font-mono font-bold tracking-[0.3em] text-center rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-interactive/40 placeholder:text-text-subtle placeholder:tracking-normal placeholder:font-normal placeholder:text-base"
+                    onChange={(e) => setPinValue(e.target.value)}
+                    autoComplete="off"
+                    placeholder="Paste a DirectDrop link"
+                    className="flex-1 min-w-0 bg-surface-code border border-hairline text-text text-sm font-mono rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-interactive/40 placeholder:text-text-subtle placeholder:font-sans"
                   />
                   <button
                     type="submit"
@@ -332,7 +329,6 @@ export default function Home() {
                     {dd.pinConnecting ? "Connecting..." : "Connect"}
                   </button>
                 </form>
-                <p className="text-xs text-text-muted mt-2">Connects automatically when all 6 digits are in.</p>
               </div>
             )}
 
@@ -576,20 +572,18 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={onCopyPin}
-                  title="Copy PIN"
+                  title="Copy link"
                   className={`group w-full text-center bg-surface-code border rounded-xl py-3 mb-4 ${
                     pinCopied ? "border-interactive scale-[1.02]" : "border-hairline hover:border-interactive"
                   }`}
                 >
-                  <span className="text-4xl sm:text-5xl font-mono font-extrabold text-interactive tracking-[0.3em] sm:tracking-[0.35em] select-all">
-                    {dd.pin || "------"}
-                  </span>
+                  <span className="text-lg font-semibold text-text">Copy link</span>
                   <span
                     className={`block text-xs mt-1 transition-colors ${
                       pinCopied ? "font-semibold text-interactive" : "text-text-muted group-hover:text-interactive"
                     }`}
                   >
-                    {pinCopied ? "Copied ✓" : "Tap to copy"}
+                    {pinCopied ? "Copied" : "The link is the only way in"}
                   </span>
                 </button>
                 <div className="flex items-center space-x-2">
@@ -786,6 +780,28 @@ export default function Home() {
               </div>
             )}
 
+            {dd.connected && !dd.transferAllowed && (
+              <div className="mb-4 p-4 bg-surface border border-hairline rounded-2xl" role="status">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1">
+                  Safety code {dd.safetyCode || "…"}
+                </p>
+                <p className="text-sm text-text-muted mb-3">
+                  {dd.awaitingGuest
+                    ? "Read this code with the other person. Allow them only if it matches their screen."
+                    : "Read this code with the other person. They have to allow you before files can move."}
+                </p>
+                {dd.awaitingGuest && (
+                  <button
+                    type="button"
+                    onClick={dd.confirmGuest}
+                    className="bg-interactive hover:bg-interactive-hover text-text-invert text-sm font-semibold px-4 py-2.5 rounded-xl"
+                  >
+                    Allow sender
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Connected badge + chat */}
             {dd.connected && (
               <>
@@ -794,7 +810,7 @@ export default function Home() {
                   Connected
                   {dd.role && (
                     <span className="font-normal text-text-muted">
-                      &middot; {dd.role === "host" ? "you created this connection" : "you joined via PIN"}
+                      &middot; {dd.role === "host" ? "you created this connection" : "you joined from a link"}
                     </span>
                   )}
                 </div>
