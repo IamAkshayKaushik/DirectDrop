@@ -193,9 +193,7 @@ export default function Home() {
       </div>
 
       <main
-        className={`w-full min-h-[80vh] flex flex-col px-4 sm:px-8 py-8 sm:py-10 ${
-          isDropContributor ? "max-w-lg" : "max-w-5xl"
-        }`}
+        className="w-full min-h-[80vh] flex flex-col px-4 sm:px-8 py-8 sm:py-10 max-w-5xl"
       >
         <header className="text-left mb-8">
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -265,12 +263,10 @@ export default function Home() {
         </header>
 
         <div
-          className={`grid gap-4 sm:gap-8 flex-1 ${
-            isDropContributor ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 md:divide-x md:divide-hairline"
-          }`}
+          className="grid gap-4 sm:gap-8 flex-1 grid-cols-1 md:grid-cols-2 md:divide-x md:divide-hairline"
         >
           {/* Left Column: Connect, File Input, Queue */}
-          <div className={`flex flex-col ${isDropContributor ? "" : "order-2 md:order-1 md:pr-8"}`}>
+          <div className={`flex flex-col md:pr-8 ${isDropContributor ? "" : "order-2 md:order-1"}`}>
             {isDropContributor && dd.showSpinner && (
               <div className="mb-4 flex items-center justify-center gap-3 py-3" role="status">
                 <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -479,40 +475,6 @@ export default function Home() {
               </div>
             )}
 
-            {isDropContributor && dd.progress && (
-              <div className="mb-6 w-full bg-surface p-5 rounded-2xl border border-hairline shadow-sm">
-                <div className="flex justify-between items-start mb-3 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Sending</p>
-                    <p className="text-sm font-semibold text-text truncate">{dd.progress.filename}</p>
-                  </div>
-                  <span className="font-mono text-3xl font-extrabold text-interactive tabular-nums shrink-0">
-                    {Math.round(dd.progress.pct)}<span className="text-base align-top">%</span>
-                  </span>
-                </div>
-                <div
-                  className="w-full bg-surface-hover rounded-full h-2.5 mb-2 overflow-hidden"
-                  role="progressbar"
-                  aria-valuenow={Math.round(dd.progress.pct)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Sending ${dd.progress.filename}`}
-                >
-                  <div
-                    className="progress-fill bg-interactive h-2.5 rounded-full relative"
-                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, dd.progress.pct)) / 100})` }}
-                  >
-                    <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse" />
-                  </div>
-                </div>
-                <div className="flex justify-between font-mono text-xs text-text-muted tabular-nums">
-                  <span>{dd.progress.speed}</span>
-                  <span>{dd.progress.sizeText}</span>
-                  <span>{dd.progress.eta}</span>
-                </div>
-              </div>
-            )}
-
             {/* Pre-connection: how it works */}
             {dd.showHelp && !isDropContributor && (
               <div className="mt-2 p-5">
@@ -539,11 +501,10 @@ export default function Home() {
             )}
           </div>
 
-          {/* Right Column: Share, Status, Chat, Progress — hidden for drop contributor */}
-          {!isDropContributor && (
+          {/* Right Column: share (host only), receive, chat */}
           <div className="flex flex-col h-full order-1 md:order-2 md:pl-8">
             {/* Skeleton reserving the share panel's slot until the PIN arrives — avoids layout shift */}
-            {!dd.pin && !dd.showSpinner && !dd.connected && (
+            {!isDropContributor && !dd.pin && !dd.showSpinner && !dd.connected && (
               <div
                 className="mb-6 bg-surface p-5 rounded-2xl border border-hairline shadow-sm"
                 aria-hidden="true"
@@ -557,7 +518,7 @@ export default function Home() {
             )}
 
             {/* Share panel: PIN, link, QR — always receive-first */}
-            {dd.showShare && (
+            {!isDropContributor && dd.showShare && (
               <div
                 id="share"
                 className="mb-6 bg-surface p-5 sm:p-6 rounded-3xl border border-hairline"
@@ -622,7 +583,7 @@ export default function Home() {
             )}
 
             {/* Connecting spinner (URL-based auto-connect) */}
-            {dd.showSpinner && (
+            {dd.showSpinner && !isDropContributor && (
               <div className="mb-6 flex items-center justify-center gap-3 py-4" role="status">
                 <svg className="animate-spin h-5 w-5 text-interactive" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
@@ -780,7 +741,7 @@ export default function Home() {
               </div>
             )}
 
-            {dd.connected && !dd.transferAllowed && (
+            {dd.connected && !dd.transferAllowed && !isDropContributor && (
               <div className="mb-4 p-4 bg-surface border border-hairline rounded-2xl" role="status">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-interactive mb-1">
                   Safety code {dd.safetyCode || "…"}
@@ -859,7 +820,6 @@ export default function Home() {
               </>
             )}
           </div>
-          )}
         </div>
       </main>
 
